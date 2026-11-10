@@ -2,95 +2,260 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NBT Evo Gauge Installer</title>
+<title>TunedByWali · iDrive 6 Installer</title>
 <style>
-:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#0d131c;color:#edf2f7}
-*{box-sizing:border-box} body{margin:auto;max-width:740px;padding:32px 20px} h1{margin:0;font-size:clamp(1.8rem,5vw,2.7rem)}
-p{line-height:1.55} a{color:#99d9ff} .lead{color:#b7c8dd;margin-top:.5rem}
-section{padding:21px;border:1px solid #3b4c62;border-radius:12px;background:#152030;margin-top:18px}
-h2{font-size:1.12rem;margin:0 0 14px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
-label{display:block;font-weight:600} input,select,button{font:inherit} input,select{display:block;width:100%;margin-top:5px;border:1px solid #637a93;border-radius:6px;padding:9px;background:#0d1723;color:#fff}
-button{padding:.6rem .9rem;border-radius:7px;color:#101826;background:#f8ad59;border:0;cursor:pointer;font-weight:700} button.secondary{background:#2c3c50;color:#e9f3ff} button:disabled{opacity:.45;cursor:default}
-.buttons{display:flex;flex-wrap:wrap;gap:9px;margin-top:15px} output{display:block;min-height:3rem;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55;color:#eaf2ff}
-small,.hint{color:#b7c8dd} .badge{font-size:.8rem;background:#283a50;color:#dceafe;padding:4px 8px;border-radius:5px;vertical-align:middle}
-details{margin-top:15px} summary{cursor:pointer;font-weight:600}
-fieldset{margin:16px 0 0;border:1px solid #3b4c62;border-radius:7px;padding:10px 13px}
-fieldset label{margin:.35rem 0} fieldset input[type=radio]{display:inline;width:auto;margin:0 .4rem 0 0;accent-color:#f8ad59}
+:root{
+  color-scheme:dark;
+  --bg:#0a0e13; --panel:#121923; --panel-2:#0e141d; --line:#263341;
+  --ink:#eaf1f8; --mut:#9fb2c6; --soft:#6f8197;
+  --brand:#ff6a1a; --brand-2:#ffa23d; --ink-on-brand:#140a02;
+  --ok:#35c27a; --warn:#ffb020; --bad:#ff5a5a; --info:#7fc8ff;
+  --r:13px; --r-sm:8px;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  background:var(--bg); color:var(--ink);
+}
+*{box-sizing:border-box}
+body{margin:0 auto;max-width:780px;padding:22px 18px 56px;line-height:1.55}
+a{color:var(--brand-2);text-underline-offset:2px}
+h1{margin:0;font-size:1.15rem;font-weight:800;letter-spacing:.2px}
+h2{font-size:1.06rem;margin:0 0 4px;font-weight:700}
+p{margin:.5rem 0}
+small,.hint{color:var(--mut);font-size:.86rem}
+.sub{color:var(--mut);margin:.15rem 0 0;font-size:.9rem}
+
+/* Header / brand */
+header{display:flex;align-items:center;gap:13px;padding:6px 2px 2px}
+.logo{flex:0 0 auto;width:46px;height:46px;border-radius:11px;
+  background:linear-gradient(145deg,#1c2733,#0d141d);border:1px solid var(--line);
+  display:grid;place-items:center;box-shadow:0 1px 0 #ffffff0d inset}
+.logo svg{width:30px;height:30px;display:block}
+.brandtext{display:flex;flex-direction:column;gap:1px}
+.brandtext .k{font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--brand-2);font-weight:700}
+.badge{font-size:.72rem;background:#1b2a1e;color:#9fe7bd;border:1px solid #2b5a3e;
+  padding:3px 8px;border-radius:999px;font-weight:700;white-space:nowrap}
+.topline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* Stepper */
+.steps{display:flex;gap:8px;margin:18px 0 6px}
+.step{flex:1;min-width:0;display:flex;align-items:center;gap:9px;padding:10px 11px;
+  border:1px solid var(--line);border-radius:var(--r);background:var(--panel-2);transition:.2s}
+.step .n{flex:0 0 auto;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;
+  font-size:.82rem;font-weight:800;background:#1b2531;color:var(--mut);border:1px solid var(--line)}
+.step .t{font-size:.84rem;font-weight:700;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.step[data-state=active]{border-color:var(--brand);background:#1a1206}
+.step[data-state=active] .n{background:var(--brand);color:var(--ink-on-brand);border-color:var(--brand)}
+.step[data-state=active] .t{color:var(--ink)}
+.step[data-state=done]{border-color:#2b5a3e;background:#0f1a14}
+.step[data-state=done] .n{background:var(--ok);color:#06130b;border-color:var(--ok)}
+.step[data-state=done] .t{color:#bfe9cf}
+.step[data-state=done] .n::after{content:"✓"}
+.step[data-state=done] .n span{display:none}
+
+section{padding:18px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);margin-top:14px}
+section[aria-disabled=true]{opacity:.5;pointer-events:none}
+.eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--brand-2);font-weight:700}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:12px}
+label{display:block;font-weight:600;font-size:.92rem}
+input,select{display:block;width:100%;margin-top:6px;border:1px solid #3a4b5e;border-radius:var(--r-sm);
+  padding:11px;background:#0b141d;color:#fff;font:inherit;min-height:46px}
+input::placeholder{color:#5f7488}
+input:focus,select:focus{outline:2px solid var(--brand);outline-offset:1px;border-color:var(--brand)}
+
+button{font:inherit;padding:.72rem 1rem;min-height:48px;border-radius:10px;border:0;cursor:pointer;font-weight:800;
+  background:var(--brand);color:var(--ink-on-brand);transition:.15s;display:inline-flex;align-items:center;gap:8px;justify-content:center}
+button:hover:not(:disabled){filter:brightness(1.07)}
+button.secondary{background:#243244;color:#e9f3ff}
+button.ghost{background:transparent;color:var(--mut);border:1px solid var(--line)}
+button:disabled{opacity:.42;cursor:default}
+button[data-busy=true] .spin{display:inline-block}
+.spin{display:none;width:14px;height:14px;border:2px solid #0003;border-top-color:currentColor;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.buttons{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.primary-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.primary-row button{flex:1 1 auto;min-width:160px}
+
+fieldset{margin:14px 0 0;border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px}
+legend{font-weight:700;font-size:.9rem;padding:0 6px}
+fieldset label{display:flex;align-items:center;gap:9px;margin:.45rem 0;font-weight:500}
+fieldset input[type=radio]{width:auto;min-height:0;margin:0;accent-color:var(--brand)}
+details{margin-top:12px;border:1px solid var(--line);border-radius:var(--r-sm);padding:2px 12px;background:var(--panel-2)}
+summary{cursor:pointer;font-weight:700;padding:10px 0;font-size:.92rem}
+details[open] summary{border-bottom:1px solid var(--line);margin-bottom:8px}
+ul.need{margin:.4rem 0 .2rem;padding-left:1.1rem}
+ul.need li{margin:.3rem 0}
+
+/* Status */
+.status-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pill{font-size:.78rem;font-weight:800;padding:4px 10px;border-radius:999px;border:1px solid var(--line);
+  background:#1b2531;color:var(--mut);white-space:nowrap}
+.pill[data-k=ok]{background:#0f1a14;color:#9fe7bd;border-color:#2b5a3e}
+.pill[data-k=bad]{background:#1e1012;color:#ffb3b3;border-color:#5a2b2b}
+.pill[data-k=warn]{background:#1e1708;color:#ffd79a;border-color:#5a4a1f}
+.pill[data-k=run]{background:#0e1722;color:#bfe0ff;border-color:#2c4766}
+output{display:block;min-height:2.6rem;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:10px;color:#eaf2ff;font-size:.95rem}
+.callout{border:1px solid #5a4a1f;background:#1a1407;border-radius:var(--r-sm);padding:12px 14px;margin-top:14px;font-size:.9rem;color:#ffe3b0}
+.foot{margin-top:22px;color:var(--soft);font-size:.8rem;text-align:center;line-height:1.7}
+.foot a{color:var(--mut)}
+@media (max-width:560px){
+  .steps{flex-direction:column;gap:7px}
+  .step{flex:none}
+}
 </style>
-<h1>NBT Evo Gauges <span class="badge">0.2.9 Preview</span></h1>
-<p class="lead">BoostDeck · ShiftDeck · MHD Maps for N18092I, V20153I and Y24073J</p>
-<p class="hint">Parked preview. Verify screen fit, touch and vehicle readings on each car. Map selection requires a compatible MHD+ multi-map tune.</p>
-<section>
-<h2>1. Connect over ENET</h2>
-<p>Park the car, power iDrive and connect your computer directly to the OBD port with an ENET cable. Enable temporary SSH using a tool for your exact firmware.</p>
-<p><a href="https://ssh.bavarian-aa.uk/" rel="noopener noreferrer" target="_blank">Bavarian SSH Client downloads</a></p>
-<div class="buttons"><button type="button" id="find">Find car</button></div>
-<label id="choice" hidden>Detected gateway <select id="cars"></select></label>
-<p class="hint">The gateway and head unit usually have different IPs. Use the head unit SSH IP reported by your unlock tool if Find car can only fill the gateway.</p>
-<div class="grid">
-<label>Head unit SSH IP <input id="Head" placeholder="169.254.x.x" autocomplete="off"></label>
-<label>Diagnostic gateway IP <input id="Gateway" placeholder="169.254.x.x" autocomplete="off"></label>
+
+<header>
+  <div class="logo" aria-hidden="true">
+    <!-- TBW performance monogram -->
+    <svg viewBox="0 0 64 64" role="img" aria-label="TunedByWali">
+      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#ffb24d"/><stop offset="1" stop-color="#ff6a1a"/>
+      </linearGradient></defs>
+      <path d="M8 40c6-3 10-7 14-14 3 6 7 10 13 12-7 2-12 7-14 14-2-7-6-11-13-12z" fill="url(#g)"/>
+      <path d="M40 16c3 5 7 8 13 9-6 2-10 6-12 12-2-6-5-9-10-11 5-2 8-5 9-10z" fill="#ffd79a" opacity=".85"/>
+    </svg>
+  </div>
+  <div class="brandtext">
+    <span class="k">TunedByWali · TBW Performance</span>
+    <div class="topline"><h1>iDrive 6 Gauge Installer</h1><span class="badge" id="ver">v0.2.9</span></div>
+  </div>
+</header>
+<p class="sub">Installs <strong>BoostDeck</strong>, <strong>ShiftDeck</strong> and <strong>MHD Maps</strong> onto your BMW NBT Evo (iDrive 6) head unit. Everything runs locally on this computer over the cable in your car — nothing leaves the vehicle.</p>
+
+<div class="steps" aria-hidden="true">
+  <div class="step" id="st1" data-state="active"><span class="n"><span>1</span></span><span class="t">Connect</span></div>
+  <div class="step" id="st2"><span class="n"><span>2</span></span><span class="t">Verify car</span></div>
+  <div class="step" id="st3"><span class="n"><span>3</span></span><span class="t">Install</span></div>
 </div>
+
+<details>
+  <summary>Before you start — what you need</summary>
+  <ul class="need">
+    <li><strong>Car parked</strong>, ignition on, and iDrive fully awake. Keep it awake the whole time.</li>
+    <li>A <strong>wired ENET cable</strong> from the car's OBD port to this computer (a USB-to-Ethernet adapter is fine).</li>
+    <li><strong>Temporary SSH enabled</strong> on the head unit using the Bavarian SSH Client for your exact firmware — you'll get a root password from it. <a href="https://ssh.bavarian-aa.uk/" rel="noopener noreferrer" target="_blank">Bavarian SSH Client</a></li>
+    <li>Supported firmware: <strong>NBTevo_N18092I, V20153I, or Y24073J</strong>. Other versions are blocked for safety.</li>
+  </ul>
+  <p class="hint">This is a parked preview. After install, check the gauges and map switching on the car before relying on the readings.</p>
+</details>
+
+<!-- STEP 1 -->
+<section id="sec1">
+  <span class="eyebrow">Step 1</span>
+  <h2>Find your car</h2>
+  <p class="sub">Plug in the ENET cable, then press Find my car. If only the gateway fills in, enter the head-unit SSH IP from the Bavarian tool.</p>
+  <div class="primary-row">
+    <button type="button" id="find"><span class="spin"></span><span>Find my car</span></button>
+  </div>
+  <label id="choice" hidden style="margin-top:14px">Detected gateways <select id="cars"></select></label>
+  <div class="grid">
+    <label>Head unit SSH IP <input id="Head" placeholder="169.254.x.x" inputmode="decimal" autocomplete="off"></label>
+    <label>Diagnostic gateway IP <input id="Gateway" placeholder="169.254.x.x" inputmode="decimal" autocomplete="off"></label>
+  </div>
+  <p class="hint">The gateway and head unit usually have different IPs on the 169.254.x.x ENET link.</p>
 </section>
-<section>
-<h2>2. Identify and install</h2>
-<div class="grid">
-<label>Head unit root SSH password <input id="Password" type="password" autocomplete="off"></label>
-<label>iDrive version (if auto-detection is unavailable) <input id="Version" placeholder="NBTevo_N18092I" autocomplete="off"></label>
-</div>
-<details><summary>Where do I find the version on iDrive?</summary>
-<p>Open Navigation → press OPTIONS → Navigation settings → Position and version → Version information. The full code starts with NBTevo_. Menu wording can vary.</p></details>
-<fieldset id="display-settings" aria-describedby="display-hint">
-<legend>iDrive display resolution</legend>
-<label><input type="radio" name="resolution" value="" checked>Automatic</label>
-<label><input type="radio" name="resolution" value="800x480">800 × 480</label>
-<label><input type="radio" name="resolution" value="1280x480">1280 × 480</label>
-<label><input type="radio" name="resolution" value="1440x540">1440 × 540</label>
-<label><input type="radio" name="resolution" value="1920x720">1920 × 720 (experimental)</label>
-<label><input type="radio" name="resolution" value="custom">Custom (experimental)</label>
-<div id="custom-resolution" hidden>
-<div class="grid">
-<label>Width in pixels <input id="display-width" type="number" min="800" max="1920" step="1"></label>
-<label>Height in pixels <input id="display-height" type="number" min="480" max="720" step="1"></label>
-</div>
-</div>
-<p class="hint" id="display-hint">Choose the resolution iDrive sends to the display. This can differ from the panel’s advertised resolution. The inch size alone does not identify the layout.</p>
-</fieldset>
-<div id="trust" hidden>
-<label>SSH host key fingerprint <input id="Fingerprint" readonly aria-describedby="fingerprint-hint"></label>
-<p class="hint" id="fingerprint-hint">The installer fills this in when Check compatibility reaches the head unit over SSH. Confirm the SSH IP belongs to your connected car and compare the fingerprint with a trusted copy if you have one. Then choose Trust this fingerprint and check.</p>
-</div>
-<div class="buttons">
-<button type="button" id="inspect">Check compatibility</button>
-<button type="button" id="install" disabled>Install all three apps</button>
-<button type="button" id="quit" class="secondary">Quit</button>
-</div>
-<p class="hint">Keep iDrive on and ENET connected during installation. Restart iDrive once the status says <strong>Installed and verified all three apps</strong>.</p>
-<div id="lock-recovery" hidden>
-<p class="hint">The earlier attempt left all three app folders in staging. Close all other installer windows and confirm that no other computer is installing to this car before continuing.</p>
-<button type="button" id="recover" class="secondary">Clear lock and install</button>
-</div>
+
+<!-- STEP 2 -->
+<section id="sec2" aria-disabled="true">
+  <span class="eyebrow">Step 2</span>
+  <h2>Unlock &amp; verify compatibility</h2>
+  <p class="sub">Enter the root password from the Bavarian SSH Client. The installer confirms the firmware and matches the on-car framework fingerprints before anything is written.</p>
+  <div class="grid">
+    <label>Head unit root SSH password <input id="Password" type="password" autocomplete="off"></label>
+    <label>iDrive version <small>(only if auto-detect fails)</small> <input id="Version" placeholder="NBTevo_N18092I" autocomplete="off"></label>
+  </div>
+  <details>
+    <summary>Where do I find the iDrive version?</summary>
+    <p class="hint">Navigation → OPTIONS → Navigation settings → Position and version → Version information. The full code starts with <strong>NBTevo_</strong>. Menu wording can vary by car.</p>
+  </details>
+
+  <fieldset id="display-settings" aria-describedby="display-hint">
+    <legend>iDrive display resolution</legend>
+    <label><input type="radio" name="resolution" value="" checked>Automatic (recommended)</label>
+    <label><input type="radio" name="resolution" value="800x480">800 × 480</label>
+    <label><input type="radio" name="resolution" value="1280x480">1280 × 480</label>
+    <label><input type="radio" name="resolution" value="1440x540">1440 × 540</label>
+    <label><input type="radio" name="resolution" value="1920x720">1920 × 720 (experimental)</label>
+    <label><input type="radio" name="resolution" value="custom">Custom (experimental)</label>
+    <div id="custom-resolution" hidden>
+      <div class="grid">
+        <label>Width (px) <input id="display-width" type="number" min="800" max="1920" step="1"></label>
+        <label>Height (px) <input id="display-height" type="number" min="480" max="720" step="1"></label>
+      </div>
+    </div>
+    <p class="hint" id="display-hint">Leave on Automatic unless detection fails. The resolution iDrive sends can differ from the panel's advertised size.</p>
+  </fieldset>
+
+  <div id="trust" hidden style="margin-top:14px">
+    <label>SSH host-key fingerprint <input id="Fingerprint" readonly aria-describedby="fingerprint-hint"></label>
+    <p class="hint" id="fingerprint-hint">Filled in on first contact. Confirm the SSH IP belongs to your connected car, then choose <strong>Trust this fingerprint &amp; check</strong>.</p>
+  </div>
+
+  <div class="primary-row">
+    <button type="button" id="inspect"><span class="spin"></span><span>Check compatibility</span></button>
+  </div>
+
+  <div id="lock-recovery" hidden class="callout">
+    <p style="margin:.1rem 0 .6rem">A previous attempt left all three app folders staged. Close every other installer window and confirm no other computer is installing to this car before continuing.</p>
+    <button type="button" id="recover" class="secondary">Clear lock &amp; install</button>
+  </div>
 </section>
-<section><h2>Status</h2><output id="status" role="status" aria-live="polite">Connect the ENET cable and select Find car, or enter both IPs manually.</output></section>
+
+<!-- STEP 3 -->
+<section id="sec3" aria-disabled="true">
+  <span class="eyebrow">Step 3</span>
+  <h2>Install the apps</h2>
+  <p class="sub">Keep iDrive on and the cable connected. The installer uploads and reads back every file, keeping a backup of anything it replaces.</p>
+  <div class="primary-row">
+    <button type="button" id="install" disabled><span class="spin"></span><span>Install all three apps</span></button>
+    <button type="button" id="quit" class="ghost">Quit</button>
+  </div>
+</section>
+
+<!-- STATUS -->
+<section>
+  <div class="status-head">
+    <span class="eyebrow">Status</span>
+    <span class="pill" id="pill">Not connected</span>
+  </div>
+  <output id="status" role="status" aria-live="polite">Plug in the ENET cable and press “Find my car”, or type both IPs manually.</output>
+</section>
+
+<p class="foot">
+  TunedByWali · TBW Performance — Built by Wali LLC<br>
+  Based on the open-source NBT Evo Gauges project. Install only on vehicles you own or are authorized to modify.<br>
+  Trouble? Message <strong>b58devkev</strong> on Instagram, or your TunedByWali contact.
+</p>
+
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
 const fields=["Head","Gateway","Version"];
 let local="", detected=[], fingerprint="", busy=false, ready=false;
+
+function setPill(kind,text){const p=$("pill");p.dataset.k=kind;p.textContent=text;}
+function setStep(a,b,c){ // states: active/done/''
+  $("st1").dataset.state=a; $("st2").dataset.state=b; $("st3").dataset.state=c;
+}
+function phase(){
+  const haveIPs=$("Head").value.trim() && $("Gateway").value.trim();
+  $("sec2").setAttribute("aria-disabled", haveIPs ? "false":"true");
+  $("sec3").setAttribute("aria-disabled", ready ? "false":"true");
+  if(ready) setStep("done","done","active");
+  else if(haveIPs) setStep("done","active","");
+  else setStep("active","","");
+}
 function controls(){
-  $("find").disabled=busy;
-  $("inspect").disabled=busy;
+  for(const id of ["find","inspect","recover","display-settings","quit"]) if($(id)) $(id).disabled=busy;
   $("install").disabled=busy||!ready;
-  $("recover").disabled=busy;
-  $("display-settings").disabled=busy;
-  $("quit").disabled=busy;
+  for(const id of ["find","inspect","install","recover","quit"]){const b=$(id); if(b) b.dataset.busy = (busy && !b.disabled)?"true":"false";}
+  phase();
 }
 function reset(){
   fingerprint=""; ready=false;
   $("lock-recovery").hidden=true;
   $("trust").hidden=true;
   $("Fingerprint").value="";
-  $("inspect").textContent="Check compatibility";
+  $("inspect").querySelector("span:last-child").textContent="Check compatibility";
   controls();
 }
 for (const field of fields) $(field).addEventListener("input",()=>{
@@ -112,22 +277,25 @@ function pick(){
   $("Gateway").value=item.Gateway;
   $("Head").value=item.Head;
   reset();
-  $("status").textContent=item.Head?"Head unit and gateway found. Check compatibility.":"Gateway found. Enter the SSH IP from your unlock tool.";
+  if(item.Head){ setPill("ok","Car found"); $("status").textContent="Head unit and gateway found. Enter your SSH password and check compatibility."; }
+  else { setPill("warn","Gateway only"); $("status").textContent="Gateway found. Enter the head-unit SSH IP from your unlock tool."; }
 }
 $("cars").addEventListener("change",pick);
+
 async function request(action,body={}){
   busy=true; controls();
   try{
     const result=await fetch(action,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-    if(!result.ok)throw new Error("The local installer did not respond.");
+    if(!result.ok)throw new Error("The local installer did not respond. Make sure this window was opened by the installer app.");
     return await result.json();
   }finally{busy=false;controls();}
 }
+
 $("find").onclick=async()=>{
-  $("status").textContent="Looking for a gateway on the direct ENET link…";
+  setPill("run","Searching"); $("status").textContent="Looking for your car on the ENET link…";
   try{
     const result=await request("discover");
-    if(!Array.isArray(result)){$("status").textContent=result.Result;return;}
+    if(!Array.isArray(result)){setPill("bad","No car found");$("status").textContent=result.Result;return;}
     detected=result;
     $("cars").replaceChildren(...detected.map((item,i)=>new Option(item.Gateway+" via "+item.Local,String(i))));
     $("choice").hidden=result.length===1;
@@ -135,12 +303,22 @@ $("find").onclick=async()=>{
     else {
       local=""; $("Gateway").value=""; $("Head").value=""; reset();
       $("cars").selectedIndex=-1;
-      $("status").textContent="Multiple gateways replied. Select your car.";
+      setPill("warn","Pick your car"); $("status").textContent="More than one gateway replied. Select your car above.";
     }
-  }catch(e){$("status").textContent=e.message;}
+  }catch(e){setPill("bad","Error");$("status").textContent=e.message;}
 };
+
+function classify(result){
+  if(result.Ready===true) return ["ok","Ready to install"];
+  if(typeof result.Result==="string"){
+    if(result.Result.indexOf("Installed and verified")===0) return ["ok","Installed ✓"];
+    if(/stopped|does not match|Could not|disabled|outside|differs|changed|unavailable|Enter |Choose |Verify /i.test(result.Result)) return ["warn","Needs attention"];
+  }
+  return ["warn","Checked"];
+}
+
 async function vehicle(action){
-  if(!fields.slice(0,2).every(k=>$(k).value.trim())){$("status").textContent="Enter both ENET IPs.";return;}
+  if(!fields.slice(0,2).every(k=>$(k).value.trim())){setPill("warn","Missing IPs");$("status").textContent="Enter both ENET IPs (head unit and gateway).";return;}
   const body={};
   for(const name of fields)body[name]=$(name).value.trim();
   body.Local=local; body.Fingerprint=fingerprint; body.Password=$("Password").value;
@@ -148,27 +326,31 @@ async function vehicle(action){
   if(body.DisplayResolution==="custom"){
     const width=$("display-width"), height=$("display-height");
     if(!width.value||!height.value||!width.checkValidity()||!height.checkValidity()){
-      $("status").textContent="Enter a whole pixel width of 800–1920 and height of 480–720.";
+      setPill("warn","Check resolution");$("status").textContent="Enter a whole pixel width of 800–1920 and height of 480–720.";
       return;
     }
     body.DisplayResolution=width.value+"x"+height.value;
   }
   ready=false;
-  $("status").textContent=action==="inspect"?"Checking the head unit…":"Installing and reading back all files…";
+  setPill("run", action==="inspect"?"Checking":"Installing");
+  $("status").textContent=action==="inspect"?"Checking the head unit…":"Installing and reading back every file… keep iDrive on and the cable connected.";
   try{
     const result=await request(action,body);
     ready=result.Ready===true;
     $("lock-recovery").hidden=result.CanRecover!==true;
+    const [k,label]=classify(result);
+    setPill(k,label);
     $("status").textContent=[result.Version,result.Display&&"Display "+result.Display,result.Touch,result.Result].filter(Boolean).join("\n");
     if(result.Fingerprint && !fingerprint){
       fingerprint=result.Fingerprint;
       $("Fingerprint").value=fingerprint;
       $("trust").hidden=false;
-      $("inspect").textContent="Trust this fingerprint and check";
+      $("inspect").querySelector("span:last-child").textContent="Trust this fingerprint & check";
+      setPill("run","Confirm key");
     }else if(result.Version){
-      $("inspect").textContent="Check compatibility";
+      $("inspect").querySelector("span:last-child").textContent="Check compatibility";
     }
-  }catch(e){$("status").textContent=e.message;}
+  }catch(e){setPill("bad","Error");$("status").textContent=e.message;}
   finally{controls();}
 }
 $("inspect").onclick=()=>vehicle("inspect");
@@ -177,6 +359,8 @@ $("recover").onclick=()=>{
   if(confirm("Have you closed every other installer and confirmed that no other computer is installing to this car?")) vehicle("recover");
 };
 $("quit").onclick=async()=>{
-  try{await request("quit");}finally{$("status").textContent="Installer closed. You can close this tab.";}
+  try{await request("quit");}finally{setPill("","Closed");$("status").textContent="Installer closed. You can close this tab.";}
 };
+controls();
 </script>
+</html>
