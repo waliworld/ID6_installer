@@ -1,100 +1,92 @@
-# TunedByWali · iDrive 6 Installer
+# TunedByWali · NBT Evo Toolbox
 
-A lightweight PC program that lets a client install **BoostDeck**, **ShiftDeck**, and
-**MHD Maps** onto their BMW **NBT Evo (iDrive 6 / ID6)** head unit — with a simple,
-guided, TunedByWali‑branded wizard instead of a developer tool or an AI agent.
+A lightweight PC program that walks a client through the **whole** NBT Evo (iDrive 5/6)
+job as one guided procedure:
 
-> **Client guide:** [Quick Start.md](Quick%20Start.md)
+**Connect → Enable SSH → Identify → Install gauges → Full-screen CarPlay → Secure**
 
----
-
-## What this fork adds
-
-This repository is a fork of the open‑source **NBT Evo Gauges** project. The upstream project
-ships a working flashing engine but a developer‑oriented interface — its README tells clients
-to *"hand this repository to an AI agent."* That's not something a customer can do on their own.
-
-This fork keeps the upstream engine **unchanged** and replaces only the front end:
-
-- **`source/index.html`** — a rebuilt, branded, **3‑step wizard** (Connect → Verify → Install).
-  - Responsive for phone and desktop, large touch targets, minimal typing.
-  - Auto‑fills the car's IPs, clear step gating, plain‑language status and error states.
-  - Drives the **same** `discover` / `inspect` / `install` backend endpoints — so the tested
-    install logic, framework‑hash safety gate, install‑lock, and automatic rollback are
-    untouched.
-
-Nothing about *how the car is flashed* was changed. Only the experience of using it.
-
-## How it works (the engine, unchanged from upstream)
-
-1. **ENET discovery** — finds the car's diagnostic gateway and head unit over the wired
-   OBD/ENET link (169.254.x.x).
-2. **Inspect** — SSHes into the head unit and verifies:
-   - firmware is one of the three supported `NBTevo_*` builds,
-   - the unit reports **QNX 6.5.0 ARM**,
-   - both on‑car framework files match known **SHA‑256** fingerprints,
-   - the display resolution is a supported layout,
-   - the ID5 `Plugins` folder is writable and the gateway is reachable.
-   - Installation stays **disabled** unless every check passes.
-3. **Install** — stages all three apps, scales the layout XML to the display, publishes behind
-   an **install lock**, reads every file back to verify it, and keeps a **backup** of anything
-   it replaces. On any failure it **rolls back** automatically.
-
-## Supported firmware
-
-`NBTevo_N18092I`, `NBTevo_V20153I`, `NBTevo_Y24073J`. Anything else is refused by design.
-Bringing up a new firmware requires the upstream compatibility workflow and a parked test
-on an authorized car — see [`AgentReadMe.md`](AgentReadMe.md).
+> **Client guide:** [Quick Start.md](Quick%20Start.md) · **Build/dev:** [docs/INTEGRATION.md](docs/INTEGRATION.md)
 
 ---
 
-## Building the client installer (shop side)
+## What it does
 
-The finished app is a tiny local web server (Go) that embeds this UI and auto‑opens the
-browser. Clients just run the `.exe` / `.app` — no toolchain on their end.
+- **Enable SSH** — flashes a patched `starter.cfg` over the diagnostic network so root SSH
+  comes up on the head unit; reverts to stock when you're done. *(tools/ssh-unlock)*
+- **Identify** — read-only read-out of firmware, display, framework match, installed apps,
+  and which CarPlay method the unit needs. *(tools/hu-info + the Go `inspect` check)*
+- **Install gauges** — BoostDeck, ShiftDeck and MHD Maps, with backup + automatic rollback.
+  *(the existing Go engine — unchanged)*
+- **Full-screen CarPlay** — routes by firmware: a coding parameter on newer builds, or an
+  SSH aspect-ratio patch on older ones (the case the enabled SSH unlocks).
+  *(see [docs/CARPLAY_FULLSCREEN.md](docs/CARPLAY_FULLSCREEN.md))*
+- **Secure** — closes SSH back up so a customer's unit isn't left open as root.
+- **Add-ons** — installs community head-unit add-ons over SSH (Android Auto / NBT-AAD, the AA
+  main-menu tile, iDrive Plus info pages, EntryNav2 AA — kizapp and entry-aad) from each project's
+  own release, with on-device backup and clean removal. See [docs/ADDONS.md](docs/ADDONS.md).
+- **Coding & FSC** — read/sign/write coding and mint/apply feature codes (including real CarPlay
+  activation, FSC `0x0143` + `CARPLAY_SWT`, and full-screen `CARPLAY_FULLSCREEN`) via the vendored
+  **MIT nbt-evo-toolkit**. Auto-detects VIN and finds your PSdZData on the system; backs up coding
+  before any write; owner-VIN consent gate never bypassed. See [docs/CODING_FSC.md](docs/CODING_FSC.md).
 
-**Requirements on the build machine:**
-- **Go 1.27.3** (matches `source/go.mod`) with its `golang.org/x/crypto` and `golang.org/x/sys`
-  modules available.
-- The **private QNX app payload** under `source/payload/` (the compiled `BoostDeck`,
-  `ShiftDeck`, `MhdMaps` folders and the `tools/` helper). These are **intentionally not in
-  this public repo** — see `source/docs/BUILD.md` and `source/payload/README.md`. Without the
-  payload the installer builds but has nothing to install.
-- macOS with `lipo` / `codesign` if you want the universal, ad‑hoc‑signed Mac build.
+**Platform-aware.** The unit is identified first (NBT Evo vs EntryNav2) and the wizard only offers
+what that platform supports — on NBT Evo, enabling SSH *is* OPT_DEBUG (one mechanism); EntryNav2
+roots differently and has its own Android Auto (entry-aad). See [docs/PLATFORMS.md](docs/PLATFORMS.md).
 
-**Build:**
+One branded wizard (`source/index.html`) is the whole UI; the stepper gates each stage and
+every risky action is confirmed. It's responsive for phone and desktop.
+
+## Self-reliant backend
+
+The app validates itself on launch (**self-check**: Python, OpenSSH, ENET link, bundled
+tools, and an offline self-test of the SSH flasher) and runs every stage itself. The Go
+server owns the gauge engine; the SSH / self-check / CarPlay stages are a tested Python
+backend (`tools/toolbox.py`) the server shells out to via `source/toolbox.go` — one app,
+one build. See [docs/INTEGRATION.md](docs/INTEGRATION.md).
+
+| Stage | Status |
+|---|---|
+| Self-check (launch) | ✅ implemented + tested |
+| Connect, Install gauges, Identify (core) | ✅ work today (Go engine) |
+| Enable / Close SSH | ✅ implemented (drives the vendored flasher); flash needs a car |
+| Full-screen CarPlay / Activate CarPlay | ⛔ implemented but **gated** — applies only a profile verified on a reference car; otherwise reports "pending" and writes nothing |
+
+The wizard degrades gracefully: any stage whose backend isn't present shows a clear
+"needs app build" note instead of breaking, so a gauge-only build still ships.
+
+## Two firmware gates (don't assume overlap)
+
+- **SSH unlock** supports the **`007.xxx`** starter.cfg family (not `001_05x`).
+- **Gauge install** supports specific HMI builds (`NBTevo_N18092I / V20153I / Y24073J`).
+
+A car can pass one and not the other; Identify surfaces both before anything is flashed.
+
+## Building the installer (shop side)
+
+Clients just run the `.exe` / `.app`. To build it: **Go 1.27.3**, the private QNX
+`payload/` (the compiled gauge apps — not in this public repo; see `source/docs/BUILD.md`),
+and Python 3 + OpenSSH present at runtime for the SSH/identify stages. Then:
 
 ```sh
 cd source
-# stage the private payload per source/docs/BUILD.md, then:
-./build-release.sh            # outputs signed zips into source/dist/
+./build-release.sh        # Windows x64 + universal macOS zips, with SHA-256 sums
 ```
 
-This produces `NBT-Evo-Gauges-Windows-x64.zip`, `NBT-Evo-Gauges-macOS-universal.zip`, and
-`SHA256SUMS.txt`. Rename/brand the zips for distribution as you like, publish them on a
-GitHub Release here, and hand clients the download plus [Quick Start.md](Quick%20Start.md).
-
-To preview the UI without a car, run the server locally and open the printed URL:
-
-```sh
-cd source && go run . -no-browser
-```
-
----
+Preview the UI without a car: `cd source && go run . -no-browser`.
 
 ## Safety & authorization
 
-- Install only on vehicles **you own or are authorized to modify.** The runbook assumes owner
-  consent for every live operation.
-- This is a **parked preview.** Verify gauge accuracy and map switching on each car before
-  relying on them. MHD Maps requires a compatible **MHD+ multi‑map tune**.
-- Temporary SSH is enabled with a separate third‑party tool
-  ([Bavarian SSH Client](https://ssh.bavarian-aa.uk/)); it closes again on an iDrive restart.
+- **Enable/Close SSH is a live-partition flash — brick-capable on the wrong unit.** Keep the
+  offline self-test mandatory; `--revert` is first recovery, serial/eMMC the backstop.
+- This is a **parked preview** — verify gauges, map switching and CarPlay on the car.
+- Install only on vehicles **you own or are authorized to modify**, and record who approved it.
 
-## Credits
+## Non-commercial / credits
 
-Flashing engine, app payloads, and compatibility work: the upstream **NBT Evo Gauges**
-project (see `source/third-party/` and `source/LICENSE`). Branded client wizard and
-packaging for clients: **TunedByWali · TBW Performance (Built by Wali LLC).**
+**This project is for non-commercial, community use** — not sold, not bundled with anything
+sold. Add-ons are installed from their authors' own releases, not redistributed here. Full
+credits and licenses (NBT Evo Gauges, Xayanix SSH unlocker, Viaszx HU Info, Sq00ky NBT-AAD,
+deathwalker80 nbt-aa-tile & iDrive Plus, Keukenrol123522, kizapp EntryNav2, BimmerWest
+remote-start FSC): see [NOTICES.md](NOTICES.md).
 
-Issues or wins: message **b58devkev** on Instagram.
+Toolbox + integration: **TunedByWali · TBW Performance.** Issues or wins: **b58devkev** on Instagram.
