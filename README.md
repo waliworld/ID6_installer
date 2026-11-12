@@ -25,8 +25,13 @@ job as one guided procedure:
   main-menu tile, iDrive Plus info pages, EntryNav2 AA — kizapp and entry-aad) from each project's
   own release, with on-device backup and clean removal. See [docs/ADDONS.md](docs/ADDONS.md).
 - **Coding & FSC** — read/sign/write coding and mint/apply feature codes (including real CarPlay
-  activation, FSC `0x0143` + `CARPLAY_SWT`) via the vendored **MIT nbt-evo-toolkit**. Needs your own
-  PSdZData and the toolkit's owner-VIN consent gate. See [docs/CODING_FSC.md](docs/CODING_FSC.md).
+  activation, FSC `0x0143` + `CARPLAY_SWT`, and full-screen `CARPLAY_FULLSCREEN`) via the vendored
+  **MIT nbt-evo-toolkit**. Auto-detects VIN and finds your PSdZData on the system; backs up coding
+  before any write; owner-VIN consent gate never bypassed. See [docs/CODING_FSC.md](docs/CODING_FSC.md).
+
+**Platform-aware.** The unit is identified first (NBT Evo vs EntryNav2) and the wizard only offers
+what that platform supports — on NBT Evo, enabling SSH *is* OPT_DEBUG (one mechanism); EntryNav2
+roots differently and has its own Android Auto (entry-aad). See [docs/PLATFORMS.md](docs/PLATFORMS.md).
 
 One branded wizard (`source/index.html`) is the whole UI; the stepper gates each stage and
 every risky action is confirmed. It's responsive for phone and desktop.

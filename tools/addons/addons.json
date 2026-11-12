@@ -56,26 +56,12 @@
       ]
     },
 
-    "entrynav2-aa": {
-      "name": "Android Auto (EntryNav2 · kizapp)",
-      "desc": "Native wired Android Auto for the EntryNav2 iDrive6 variant. Needs a usb-device.conf set to your phone's USB port + VID/PID before the session can start.",
-      "license": "GPL-3.0",
-      "credit": "kizapp - entrynav2-idrive6-android-auto",
-      "source": "https://github.com/kizapp/entrynav2-idrive6-android-auto",
-      "requires": [],
-      "upload": "dir",
-      "files": [],
-      "backup_paths": [],
-      "remount": "mount -o remount rw /net/hu-omap/fs/sda0 2>/dev/null; true",
-      "steps": [],
-      "remove_steps": []
-    },
-
     "entry-aad": {
-      "name": "Wireless Android Auto (EntryNav2 · entry-aad)",
-      "desc": "More mature wireless Android Auto for EntryNav2 (1280x480, CarPlay Wi-Fi). Installs /opt/aa + /opt/hmi/data/ro/Plugins/EntryAad; built-in compat check; reversible. Needs the HU root password.",
+      "name": "Wireless Android Auto (EntryNav2)",
+      "desc": "Wireless Android Auto for EntryNav2 (1280x480, CarPlay Wi-Fi). Installs /opt/aa + /opt/hmi/data/ro/Plugins/EntryAad; built-in compat check; reversible. Needs the HU root password (EntryNav2 roots differently from NBT Evo). Alt: kizapp/entrynav2-idrive6-android-auto (GPL-3.0).",
+      "platform": "entrynav2",
       "license": "PolyForm Noncommercial 1.0.0",
-      "credit": "Jiraiya43 - entry-aad (port of Sq00ky's NBT-AAD)",
+      "credit": "Jiraiya43 - entry-aad (port of Sq00ky's NBT-AAD); alt: kizapp",
       "source": "https://github.com/Jiraiya43/entry-aad/releases",
       "requires": [],
       "upload": "dir",

@@ -43,6 +43,7 @@ try:
     import toolkit_bridge
 except ImportError:
     toolkit_bridge = None
+import hu_platform
 
 from types import SimpleNamespace
 
@@ -205,6 +206,9 @@ OPS = {
     "fsc-mint": lambda b: _tk("fsc_mint", b),
     "coding-identify": lambda b: _tk("coding_identify", b),
     "coding-backup": lambda b: _tk("coding_backup", b),
+    "coding-set": lambda b: _tk("coding_set", b),
+    "platform-detect": hu_platform.detect,
+    "psdzdata-locate": hu_platform.psdzdata_locate,
 }
 
 

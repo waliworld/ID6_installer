@@ -36,15 +36,19 @@ def present() -> bool:
     return FSC_TOOL.exists()
 
 
-def _env() -> dict:
+def _env(body: dict | None = None) -> dict:
     e = dict(os.environ)
     e["PYTHONPATH"] = str(TOOLKIT) + os.pathsep + e.get("PYTHONPATH", "")
+    # Owner-consent: set NBTEVO_OWN_VIN only when the operator confirmed authorization
+    # for this VIN (the toolkit still re-checks it against the connected car on writes).
+    if body and body.get("Authorized") and body.get("OwnVin"):
+        e["NBTEVO_OWN_VIN"] = str(body["OwnVin"]).strip().upper()
     return e
 
 
-def _run(args: list[str], timeout=60):
+def _run(args: list[str], timeout=60, body: dict | None = None):
     try:
-        p = subprocess.run([sys.executable, *args], cwd=str(TOOLKIT), env=_env(),
+        p = subprocess.run([sys.executable, *args], cwd=str(TOOLKIT), env=_env(body),
                            capture_output=True, text=True, timeout=timeout)
         return p.returncode, p.stdout.strip(), p.stderr.strip()
     except subprocess.TimeoutExpired:
@@ -115,7 +119,7 @@ def _toolkit_mod(mod: str, body: dict) -> dict:
     args = ["-m", mod, "--host", head]
     if body.get("out"):
         args += ["-o", body["out"]]
-    rc, out, err = _run(args, timeout=90)
+    rc, out, err = _run(args, timeout=90, body=body)
     text = (out + "\n" + err).strip()
     if "NBTEVO_OWN_VIN" in text or "consent" in text.lower():
         return {"Ok": False, "Gated": True,
@@ -137,6 +141,71 @@ def coding_backup(body: dict) -> dict:
     body = dict(body)
     body.setdefault("out", str(REPO / "fsc-keys" / "coding-backup.ncd"))
     return _toolkit_mod("capabilities.coding.tools.read_coding", body)
+
+
+DEFS = TOOLKIT / "capabilities" / "coding" / "definitions" / "cafd_00001ef6_definitions.json"
+import json as _json
+
+
+def resolve_token(token: str) -> dict | None:
+    """Map a coding token (e.g. CARPLAY_FULLSCREEN) to its coordinate from the toolkit
+    definitions. Reference CAFD 00001EF6 — RE-VERIFY for a unit whose CAFD differs."""
+    if not DEFS.exists():
+        return None
+    try:
+        for o in _json.loads(DEFS.read_text()):
+            if str(o.get("token", "")).upper() == token.upper():
+                mask = str(o.get("mask", "0"))
+                mval = int(mask[:-1], 2) if mask.endswith("b") else int(mask, 0)
+                field = str(o.get("field", ""))
+                shift = int(re.sub(r"\D", "", field) or 0) if field.startswith("bit") else 0
+                return {"token": o["token"], "name": o.get("name"), "dg": str(o.get("dg")),
+                        "byte": o.get("byte"), "mask": hex(mval), "shift": shift,
+                        "values": o.get("values", {}), "confidence": o.get("confidence"),
+                        "fa_gate": o.get("fa_gate")}
+    except (ValueError, OSError, KeyError):
+        return None
+    return None
+
+
+def coding_set(body: dict) -> dict:
+    """Resolve a coding token to its coordinate, enforce a backup, and return the exact
+    verified write sequence. Does NOT auto-commit: coding writes need your PSdZData, the
+    recovered signing key, your L3 key, and the owner-VIN consent gate (the toolkit enforces
+    all of these on the actual write). Full-screen CarPlay = CARPLAY_FULLSCREEN; CarPlay
+    enable bit = CARPLAY_SWT."""
+    if not present():
+        return _missing()
+    token = body.get("token", "CARPLAY_FULLSCREEN")
+    value = int(body.get("value", 1))
+    head = body.get("Head") or body.get("head")
+    r = resolve_token(token)
+    if not r:
+        return {"Ok": False, "Result": f"Coding token '{token}' not found in the reference definitions."}
+    setarg = f"0x{r['dg']},{r['byte']},{value},{r['mask']},{r['shift']}"
+
+    # Enforce read/backup first (write-proofing).
+    backup = None
+    if head:
+        b = coding_backup(dict(body, Head=head))
+        backup = b.get("Result")
+
+    plan = [
+        "python -m capabilities.coding.tools.recover_key --btld <BTLD> -o key.json   # from YOUR PSdZData, once",
+        "python -m capabilities.coding.tools.read_coding --host <HU> -o backup.ncd    # backup (done if car reachable)",
+        f"python -m capabilities.coding.tools.sign_ncd backup.ncd modified.ncd --key key.json --set {setarg}",
+        "python -m capabilities.coding.tools.write_coding --host <HU> --ncd modified.ncd --key key.json --l3-key <L3>  # rehearse",
+        "python -m capabilities.coding.tools.write_coding --host <HU> --ncd modified.ncd --key key.json --l3-key <L3> --commit",
+        "python -m capabilities.coding.tools.read_coding --host <HU> -o after.ncd     # read back + diff to verify",
+    ]
+    return {"Ok": False, "Pending": True, "Token": r["token"], "Name": r["name"],
+            "Coord": f"dg{r['dg']}/byte{r['byte']}/{r['mask']} <- {value}", "SetArg": setarg,
+            "Backup": backup, "Plan": plan, "Confidence": r.get("confidence"),
+            "Result": f"Resolved {r['token']} ({r['name']}) to {setarg}. "
+                      + (f"Coding backed up: {backup}. " if backup else "Connect the car to auto-backup first. ")
+                      + "The signed write needs your PSdZData + recovered key + L3 key + owner-VIN consent "
+                      "(toolkit-enforced). Coordinates are from CAFD 00001EF6 — re-verify if your CAFD differs. "
+                      "See docs/CODING_FSC.md."}
 
 
 def carplay_activate(body: dict) -> dict:

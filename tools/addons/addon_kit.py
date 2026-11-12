@@ -83,6 +83,7 @@ def do_list(_a) -> dict:
             "id": aid, "name": m.get("name", aid), "desc": m.get("desc", ""),
             "license": m.get("license", "?"), "credit": m.get("credit", ""),
             "requires": m.get("requires", []), "needs_kit": True,
+            "platform": m.get("platform", "nbt_evo"),
             "source": m.get("source", ""), "ready": bool(m.get("steps")),
         })
     return {"Ok": True, "Addons": items}

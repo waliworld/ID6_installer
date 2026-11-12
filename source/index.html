@@ -51,6 +51,7 @@ header{display:flex;align-items:center;gap:13px;padding:6px 2px 2px}
 
 section{padding:18px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);margin-top:14px}
 section[aria-disabled=true]{opacity:.45;pointer-events:none}
+section[data-poff]{display:none}
 .eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--brand-2);font-weight:700}
 
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:12px}
@@ -137,6 +138,8 @@ output{display:block;min-height:2.6rem;white-space:pre-wrap;overflow-wrap:anywhe
   <div class="step" id="st6"><span class="n"><span>6</span></span><span class="t">Secure</span></div>
 </div>
 
+<div id="platform-banner" class="callout info" hidden></div>
+
 <details>
   <summary>Before you start — what you need</summary>
   <ul class="need">
@@ -162,10 +165,10 @@ output{display:block;min-height:2.6rem;white-space:pre-wrap;overflow-wrap:anywhe
 </section>
 
 <!-- 2 ENABLE SSH -->
-<section id="sec2" aria-disabled="true">
+<section id="sec2" aria-disabled="true" data-platform="nbt_evo">
   <span class="eyebrow">Step 2</span>
-  <h2>Enable SSH (debug access)</h2>
-  <p class="sub">Flashes a patched <code>starter.cfg</code> (OPT_DEBUG) over the diagnostic network so root SSH comes up after a reboot. The same tool reverts it in Step 6.</p>
+  <h2>Enable SSH / OPT_DEBUG</h2>
+  <p class="sub">On NBT Evo, enabling SSH <em>is</em> flipping <code>OPT_DEBUG</code> (<code>STOP→RUN</code>) in <code>starter.cfg</code> — one mechanism: after a reboot <code>sshd</code>/<code>telnet</code>/<code>qconn</code> come up as root. Reverts in Step 6. <strong>EntryNav2 is a different unit</strong> — it roots another way (root password), so this step is NBT-Evo-only.</p>
   <div class="callout danger">
     <strong>This writes to a live partition and can disable the head unit if it's the wrong type.</strong>
     Only run on an <strong>NBT Evo 007.xxx</strong> unit. If anything goes wrong, use <em>Close SSH / Restore factory</em> (Step 6) first; serial/eMMC is the last resort.
@@ -225,7 +228,7 @@ output{display:block;min-height:2.6rem;white-space:pre-wrap;overflow-wrap:anywhe
 </section>
 
 <!-- 4 GAUGES -->
-<section id="sec4" aria-disabled="true">
+<section id="sec4" aria-disabled="true" data-platform="nbt_evo">
   <span class="eyebrow">Step 4</span>
   <h2>Install the gauges</h2>
   <p class="sub">Installs BoostDeck, ShiftDeck and MHD Maps, keeping a backup of anything replaced. Keep iDrive on and the cable connected.</p>
@@ -235,24 +238,40 @@ output{display:block;min-height:2.6rem;white-space:pre-wrap;overflow-wrap:anywhe
 </section>
 
 <!-- 5 CARPLAY -->
-<section id="sec5" aria-disabled="true">
+<section id="sec5" aria-disabled="true" data-platform="nbt_evo">
   <span class="eyebrow">Step 5</span>
   <h2>Full-screen CarPlay</h2>
   <p class="sub">What's needed depends on your firmware — the Identify step decides this for your unit.</p>
-  <div id="cp-coding" hidden class="callout info">
-    On this firmware, full-screen CarPlay is a <strong>coding parameter</strong>, not an SSH patch. Set it in your coding tool (E-Sys / BimmerCode); this toolbox doesn't need to touch the filesystem for it.
-  </div>
-  <div id="cp-ssh" hidden>
-    <div class="callout">On this (earlier) firmware, full-screen CarPlay needs an <strong>SSH aspect-ratio patch</strong> — which the SSH you enabled in Step 2 makes possible.</div>
-    <div class="primary-row"><button type="button" id="carplay" class="secondary"><span class="spin"></span><span>Enable full-screen CarPlay</span></button></div>
-  </div>
-  <div id="cp-unknown" hidden class="callout">Run Identify first to determine the CarPlay method for this unit.</div>
-  <div class="primary-row"><button type="button" id="fsc-selftest" class="ghost"><span class="spin"></span><span>Test FSC engine</span></button></div>
+  <div class="callout info">Full-screen CarPlay is the coding bit <code>CARPLAY_FULLSCREEN</code> (<code>dg3000/byte39/bit7</code>), for cars that already have CarPlay. The toolbox resolves the coordinate and backs up coding first; the signed write runs from <strong>Coding &amp; FSC</strong> below (needs PSdZData + consent).</div>
+  <div class="primary-row"><button type="button" id="carplay" class="secondary"><span class="spin"></span><span>Full-screen CarPlay (coding)</span></button></div>
   <details>
     <summary>My unit has no CarPlay at all</summary>
     <p class="hint">CarPlay activation is real now, backed by the MIT nbt-evo-toolkit: mint the CarPlay FSC (<code>0x0143</code>) under your own trust anchor, install your blobB, apply it, and set the <code>CARPLAY_SWT</code> coding bit (full ordered recipe in docs/CODING_FSC.md). Coding/FSC writes need your own <strong>PSdZData</strong> and the toolkit's owner-VIN consent gate; the local mint runs now, the two car-write steps follow the toolkit runbooks.</p>
     <div class="primary-row"><button type="button" id="carplay-activate" class="secondary"><span class="spin"></span><span>Activate CarPlay</span></button></div>
   </details>
+</section>
+
+<!-- CODING & FSC -->
+<section id="sec-coding" aria-disabled="true" data-platform="nbt_evo">
+  <span class="eyebrow">NBT Evo</span>
+  <h2>Coding &amp; FSC</h2>
+  <p class="sub">Backed by the MIT nbt-evo-toolkit. Reads are free; signed writes need your PSdZData and the owner-VIN consent gate, and always back up coding first.</p>
+  <dl class="kv">
+    <dt>Detected VIN</dt><dd id="code-vin">—</dd>
+    <dt>PSdZData</dt><dd id="code-psdz">not checked</dd>
+    <dt>FSC engine</dt><dd id="code-fsc-state">not tested</dd>
+  </dl>
+  <label class="check"><input type="checkbox" id="auth-vin"> I'm authorized to modify this VIN (sets the toolkit's owner-consent for this car).</label>
+  <div class="primary-row">
+    <button type="button" id="code-identify" class="secondary"><span class="spin"></span><span>Identify &amp; read VIN</span></button>
+    <button type="button" id="code-psdz-btn" class="ghost"><span class="spin"></span><span>Find PSdZData</span></button>
+    <button type="button" id="code-backup" class="secondary"><span class="spin"></span><span>Back up coding</span></button>
+  </div>
+  <div class="primary-row">
+    <button type="button" id="code-fullscreen"><span class="spin"></span><span>Full-screen CarPlay (coding)</span></button>
+    <button type="button" id="code-fsc" class="ghost"><span class="spin"></span><span>Test FSC engine</span></button>
+  </div>
+  <p class="hint">Full-screen = coding bit <code>CARPLAY_FULLSCREEN</code> (cars that already have CarPlay). To add CarPlay to a unit that has none, use <strong>Activate CarPlay</strong> in Step 5.</p>
 </section>
 
 <!-- ADD-ONS -->
@@ -265,7 +284,7 @@ output{display:block;min-height:2.6rem;white-space:pre-wrap;overflow-wrap:anywhe
 </section>
 
 <!-- 6 SECURE -->
-<section id="sec6" aria-disabled="true">
+<section id="sec6" aria-disabled="true" data-platform="nbt_evo">
   <span class="eyebrow">Step 6</span>
   <h2>Finish &amp; secure</h2>
   <p class="sub">Note the backup path shown in Status. Then restart iDrive (hold the volume/power knob ~30s while parked) and check the apps and CarPlay. Finally, close SSH so the unit isn't left open as root.</p>
@@ -293,7 +312,7 @@ output{display:block;min-height:2.6rem;white-space:pre-wrap;overflow-wrap:anywhe
 const $=id=>document.getElementById(id);
 const fields=["Head","Gateway","Version"];
 let local="", detected=[], fingerprint="", busy=false;
-const state={sshOn:false, identified:false, ready:false, carplay:"unknown"};
+const state={sshOn:false, identified:false, ready:false, platform:"unknown", vin:""};
 
 function setPill(k,t){const p=$("pill");p.dataset.k=k;p.textContent=t;}
 function stepState(id,s){$(id).dataset.state=s;}
@@ -305,6 +324,7 @@ function phase(){
   $("sec5").setAttribute("aria-disabled", state.identified?"false":"true");
   $("sec6").setAttribute("aria-disabled", state.sshOn?"false":"true");
   $("sec-addons").setAttribute("aria-disabled", state.sshOn?"false":"true");
+  $("sec-coding").setAttribute("aria-disabled", state.sshOn?"false":"true");
   stepState("st1", haveIPs?"done":"active");
   stepState("st2", state.sshOn?"done":(haveIPs?"active":""));
   stepState("st3", state.identified?"done":(state.sshOn?"active":""));
@@ -320,7 +340,7 @@ function controls(){
   for(const id of ["find","selftest","unlock","inspect","install","carplay","revert","recover","quit"]){const b=$(id); if(b) b.dataset.busy=(busy&&!b.disabled)?"true":"false";}
   phase();
 }
-function resetFromIPs(){ state.sshOn=false; state.identified=false; state.ready=false; state.carplay="unknown";
+function resetFromIPs(){ state.sshOn=false; state.identified=false; state.ready=false; state.platform="unknown"; applyPlatform();
   fingerprint=""; $("trust").hidden=true; $("Fingerprint").value=""; $("idcard").hidden=true;
   $("lock-recovery").hidden=true; $("inspect").querySelector("span:last-child").textContent="Identify unit"; controls(); }
 for(const f of fields) $(f).addEventListener("input",()=>{ if(f==="Head"||f==="Gateway"){local="";resetFromIPs();} controls(); });
@@ -381,15 +401,20 @@ $("unlock").onclick=async()=>{
   finally{controls();}
 };
 
-function cpLetter(ver){const m=/NBTevo_([A-Z])/i.exec(ver||"");return m?m[1].toUpperCase():null;}
-function cpMethod(ver){const L=cpLetter(ver); if(!L)return"unknown"; if("XYZ".includes(L))return"coding"; if("GHIJKLMNOPQRSTUVW".includes(L))return"ssh_patch"; return"unknown";}
-function showCarplay(){
-  $("cp-coding").hidden=state.carplay!=="coding";
-  $("cp-ssh").hidden=state.carplay!=="ssh_patch";
-  $("cp-unknown").hidden=state.carplay==="coding"||state.carplay==="ssh_patch";
-  $("id-cp").textContent = state.carplay==="coding"?"coding parameter (your firmware)":
-    state.carplay==="ssh_patch"?"SSH aspect-ratio patch (your firmware)":"unknown — confirm firmware";
+function platformOf(ver){const f=(ver||"").toUpperCase(); if(f.includes("NBTEVO_")||/\bNBT ?EVO\b/.test(f))return"nbt_evo"; if(f.includes("ENTRYEVO")||f.includes("ENTRYNAV")||f.includes("HU_ENTRY"))return"entrynav2"; return"unknown";}
+const PLATFORM_LABEL={nbt_evo:"NBT Evo (iDrive 5/6)",entrynav2:"EntryNav2 (EntryEVO)",unknown:"Not identified"};
+function applyPlatform(){
+  const p=state.platform, b=$("platform-banner");
+  if(p==="unknown"){ b.hidden=true; }
+  else { b.hidden=false; b.textContent="Connected unit: "+PLATFORM_LABEL[p]+(p==="entrynav2"
+    ? " — NBT Evo tools (OPT_DEBUG SSH, gauges, coding/FSC) don't apply here. Android Auto (entry-aad) is the supported add-on; root it with its own password first."
+    : " — full toolbox available."); }
+  for(const sec of document.querySelectorAll('section[data-platform]')){
+    if(p!=="unknown" && sec.getAttribute('data-platform')!==p) sec.setAttribute('data-poff','1');
+    else sec.removeAttribute('data-poff');
+  }
 }
+function showCarplay(){ $("id-cp").textContent="coding bit CARPLAY_FULLSCREEN (+ FSC 0x0143 to activate)"; }
 
 async function vehicle(action){
   if(!fields.slice(0,2).every(k=>$(k).value.trim())){setPill("warn","Missing IPs");$("status").textContent="Enter both ENET IPs.";return;}
@@ -408,7 +433,8 @@ async function vehicle(action){
       $("lock-recovery").hidden=r.CanRecover!==true;
       $("idcard").hidden=false; $("id-fw").textContent=r.Version||"—"; $("id-disp").textContent=r.Display||"—";
       $("id-gauge").textContent=r.Ready?"supported ✓":"not a supported build";
-      state.carplay=cpMethod(r.Version||$("Version").value); showCarplay();
+      state.platform=platformOf(r.Version||$("Version").value); showCarplay(); applyPlatform();
+      const vin=(/[A-HJ-NPR-Z0-9]{17}/.exec((r.Version||"")+" "+(r.Result||""))||[])[0]; if(vin){state.vin=vin;$("code-vin").textContent=vin;}
       if(r.Fingerprint && !fingerprint){ fingerprint=r.Fingerprint; $("Fingerprint").value=fingerprint; $("trust").hidden=false;
         $("inspect").querySelector("span:last-child").textContent="Trust & identify"; setPill("run","Confirm key");
         state.identified=false; $("idcard").hidden=true;
@@ -422,11 +448,28 @@ async function vehicle(action){
 }
 $("inspect").onclick=()=>vehicle("inspect");
 $("install").onclick=()=>vehicle("install");
-$("carplay").onclick=()=>{ if(confirm("Apply the full-screen CarPlay patch over SSH?")) vehicle("carplay"); };
 $("carplay-activate").onclick=()=>{ if(confirm("Attempt to activate CarPlay on this unit? The local FSC mint runs; car-write steps need your PSdZData + consent VIN and follow the toolkit runbooks.")) vehicle("carplay-activate"); };
-$("fsc-selftest").onclick=async()=>{ setPill("run","FSC self-test"); $("status").textContent="Proving the FSC mint/verify engine offline (no car)…";
-  try{ const r=await request("fsc-selftest"); setPill(r.Ok?"ok":"warn", r.Ok?"FSC engine OK":"FSC check"); $("status").textContent=r.Result; }
-  catch(e){ if(e.message==="__NO_ENDPOINT__")return endpointMissing("FSC engine"); setPill("bad","Error"); $("status").textContent=e.message; } };
+
+// ---- Coding & FSC (toolkit) ----
+async function codingOp(cmd,body,pill){
+  setPill("run",pill||"Working"); $("status").textContent=(pill||"Working")+"…";
+  try{
+    const base={Head:$("Head").value.trim(),Gateway:$("Gateway").value.trim(),Local:local,Password:$("Password").value,
+                OwnVin:state.vin||"",Authorized:$("auth-vin").checked};
+    const r=await request(cmd, Object.assign(base, body||{}));
+    setPill(r.Ok?"ok":(r.Pending?"warn":"warn"), r.Ok?"Done":(r.Pending?"Resolved":"Checked"));
+    const extra=[r.Coord&&("Coord: "+r.Coord), r.SetArg&&("set: "+r.SetArg), r.Backup&&("Backup: "+r.Backup), (r.Plan||[]).join("\n")].filter(Boolean).join("\n");
+    $("status").textContent=[r.Result,extra].filter(Boolean).join("\n")||"Done.";
+    return r;
+  }catch(e){ if(e.message==="__NO_ENDPOINT__"){endpointMissing("Coding/FSC");return;} setPill("bad","Error");$("status").textContent=e.message; }
+}
+function setFullscreen(){ if(confirm("Resolve + back up for full-screen CarPlay (CARPLAY_FULLSCREEN)? The signed write needs PSdZData + consent.")) codingOp("coding-set",{token:"CARPLAY_FULLSCREEN"},"Full-screen"); }
+$("carplay").onclick=setFullscreen;
+$("code-fullscreen").onclick=setFullscreen;
+$("code-identify").onclick=async()=>{ const r=await codingOp("coding-identify",{},"Identify"); if(r){const v=(/[A-HJ-NPR-Z0-9]{17}/.exec(r.Result||"")||[])[0]; if(v){state.vin=v;$("code-vin").textContent=v;}} };
+$("code-psdz-btn").onclick=async()=>{ const r=await codingOp("psdzdata-locate",{},"PSdZData"); if(r)$("code-psdz").textContent=r.Ok?(r.Path||"found"):"not found — set NBTEVO_PSDZDATA"; };
+$("code-backup").onclick=()=>codingOp("coding-backup",{},"Backup");
+$("code-fsc").onclick=async()=>{ const r=await codingOp("fsc-selftest",{},"FSC self-test"); if(r)$("code-fsc-state").textContent=r.Ok?"passed ✓":"check"; };
 
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function addonBody(id,kit){return {id,kit,Head:$("Head").value.trim(),Gateway:$("Gateway").value.trim(),Local:local,Password:$("Password").value};}
@@ -439,7 +482,8 @@ async function addonAction(id,cmd,kit,out){
 $("addons-load").onclick=async()=>{
   try{
     const r=await request("addons-list"); const host=$("addons"); host.replaceChildren();
-    for(const a of (r.Addons||[])){
+    const list=(r.Addons||[]).filter(a=>state.platform==="unknown"||!a.platform||a.platform===state.platform);
+    for(const a of list){
       const card=document.createElement("div"); card.className="addon";
       card.innerHTML=`<div class="meta"><h3>${esc(a.name)}</h3><span class="tag${a.ready?'':' pending'}">${a.ready?esc(a.license):'needs verification'}</span></div>`
         +`<p class="hint">${esc(a.desc)}</p>`
@@ -453,7 +497,7 @@ $("addons-load").onclick=async()=>{
       card.querySelector(".as").onclick=()=>addonAction(a.id,"addon-status","",out);
       host.appendChild(card);
     }
-    if(!r.Addons||!r.Addons.length)$("addons").textContent="No add-ons listed.";
+    if(!list.length)$("addons").textContent="No add-ons for this platform.";
   }catch(e){ if(e.message==="__NO_ENDPOINT__")return endpointMissing("Add-ons"); setPill("bad","Error");$("status").textContent=e.message; }
 };
 $("recover").onclick=()=>{ if(confirm("Have you closed every other installer and confirmed no other computer is installing to this car?")) vehicle("recover"); };

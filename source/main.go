@@ -126,7 +126,8 @@ func main() {
 		case "selfcheck", "unlock", "carplay", "carplay-activate",
 			"addons-list", "addon-install", "addon-remove", "addon-status",
 			"fsc-selftest", "fsc-catalog", "fsc-keygen", "fsc-mint",
-			"coding-identify", "coding-backup":
+			"coding-identify", "coding-backup", "coding-set",
+			"platform-detect", "psdzdata-locate":
 			body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<16))
 			if err != nil {
 				reply(inspection{Result: "Request too large or unreadable."})
