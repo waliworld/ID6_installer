@@ -1,84 +1,58 @@
-# TunedByWali · iDrive 6 Gauge Installer — Quick Start
+# TunedByWali · NBT Evo Toolbox — Quick Start
 
-A simple PC app that installs **BoostDeck**, **ShiftDeck**, and **MHD Maps** onto your BMW
-**NBT Evo (iDrive 6)** head unit. Everything runs locally on your computer, over the cable
-plugged into your car. Nothing is sent anywhere.
+One app, one procedure for BMW **NBT Evo (iDrive 5/6)** head units:
 
-> Supported firmware (this preview): **NBTevo_N18092I**, **NBTevo_V20153I**, **NBTevo_Y24073J**.
-> Any other version is blocked automatically — the installer will not write to it.
+**1 Connect → 2 Enable SSH → 3 Identify → 4 Install gauges → 5 Full-screen CarPlay → 6 Secure**
+
+> Runs on **NBT Evo `007.xxx`** units. **Do not** run the SSH step on a `001_05x` unit.
+> Gauges also need a supported HMI build (`NBTevo_N18092I / V20153I / Y24073J`) — the
+> Identify step checks this for you.
 
 ---
 
 ## What you need
 
-- Your car **parked**, ignition on, iDrive fully awake (keep it awake the whole time).
-- A **wired ENET cable** from the car's OBD port to your computer. A USB‑to‑Ethernet
-  adapter is fine if your laptop has no Ethernet port.
-- The **Bavarian SSH Client** to turn on temporary SSH and give you a root password:
-  <https://ssh.bavarian-aa.uk/>
-- 10–15 quiet minutes with the car.
+- Car **parked**, ignition on, iDrive awake the whole time.
+- A wired **ENET (OBD-to-Ethernet) cable**; your adapter should show a `169.254.x.x` address.
+- 15–20 quiet minutes.
+
+## The steps
+
+1. **Open the toolbox and connect.** Run the app (a window opens in your browser; leave the
+   app running). Plug in the ENET cable and press **Find my car** — the IPs fill in.
+
+2. **Enable SSH.** This flashes a debug config so the head unit allows root SSH after a
+   reboot. ⚠️ **It writes to the unit and can disable it if it's the wrong type — only run on
+   an NBT Evo 007.xxx unit.** Press **Run offline self-test** (expect a pass), tick the
+   confirmation, type `UNLOCK`, then **Enable SSH**. Wait ~50 seconds for the reboot. Keep the
+   cable connected.
+
+3. **Identify the unit.** Press **Identify**. You'll see the firmware, display, whether the
+   gauges are supported, and which **CarPlay** method your unit needs. If it shows a
+   fingerprint first, confirm the car and choose **Trust & identify**.
+
+4. **Install the gauges.** Press **Install all three apps** (enabled only if your build is
+   supported). It keeps a backup of anything it replaces — **note the backup path** shown in
+   Status.
+
+5. **Full-screen CarPlay.** The toolbox shows what your firmware needs:
+   - **Coding firmware (newer):** set it in your coding tool (E-Sys / BimmerCode) — no patch needed.
+   - **Earlier firmware:** press **Enable full-screen CarPlay** (uses the SSH you enabled).
+   - *If the unit has no CarPlay at all,* its CarPlay FSC must be activated first (separate step).
+
+6. **Secure & finish.** Restart iDrive (hold the volume/power knob ~30s while parked), then
+   check the gauges, map switching and CarPlay. Finally press **Close SSH (restore factory)**
+   so the unit isn't left open as root.
 
 ---
-
-## Step by step
-
-1. **Download and open the installer**
-   - Windows: unzip `NBT-Evo-Gauges-Windows-x64.zip` and run the `.exe`.
-   - Mac: unzip the macOS build and open the app.
-   - A window opens in your browser automatically. Leave the installer app running.
-   - *(Windows may warn that the app is unsigned, and Mac that it's from an unidentified
-     developer. That's expected for a small shop tool — allow it to run.)*
-
-2. **Connect the cable**
-   - Plug the ENET cable into the OBD port and your computer. Make sure iDrive is on.
-
-3. **Enable temporary SSH**
-   - Open the **Bavarian SSH Client**, let it find your car, confirm it picked the right
-     head unit, and choose **Enable SSH**. Note the **root password** it gives you.
-   - *(Temporary SSH turns off again when iDrive restarts — that's normal.)*
-
-4. **Find your car** (Step 1 in the installer)
-   - Press **Find my car**. The head‑unit and gateway IPs fill in automatically.
-   - If only the gateway fills in, type the **head‑unit SSH IP** shown by the Bavarian tool.
-
-5. **Unlock & verify** (Step 2)
-   - Enter the **root SSH password** from Step 3.
-   - Leave resolution on **Automatic** unless the installer asks you to pick one.
-   - Press **Check compatibility**. The first time, it shows an **SSH fingerprint** —
-     confirm the IP is your car, then press **Trust this fingerprint & check**.
-   - Wait for **"ready for a parked preview."** If it says the firmware isn't supported or a
-     fingerprint doesn't match, **stop** — don't force it. Send a screenshot to your
-     TunedByWali contact.
-
-6. **Install** (Step 3)
-   - Press **Install all three apps**. Keep iDrive on and the cable connected.
-   - Wait for **"Installed and verified all three apps."**
-
-7. **Restart iDrive**
-   - While parked, **press and hold the volume/power knob** until the screen goes dark
-     (about 30 seconds), then release. Wait for iDrive to load.
-   - Open **My Vehicle** — you'll see **BoostDeck**, **ShiftDeck**, and **MHD Maps**.
-
----
-
-## Good to know
-
-- **It keeps a backup.** If an app was already installed, the old copy is saved to a backup
-  folder shown on screen. Note that path before you restart.
-- **Check before you trust the numbers.** This is a parked preview. Compare gauge values
-  against a known‑good logger before relying on them. BoostDeck's signal definitions come
-  from a 2016 340i, so some cars show fewer signals.
-- **MHD Maps** needs a compatible **MHD+ multi‑map tune** already on the car. Always confirm
-  the active slot in MHD after switching.
-- **Tip:** in a gauge, press the **OPTIONS** button on the iDrive controller for color and
-  display settings.
 
 ## If something goes wrong
 
-- **"Install stopped"** — leave iDrive running and the cable connected. The installer keeps
-  a backup and can roll back. Re‑read the on‑screen message to your TunedByWali contact.
-- **An app misbehaves after restart** — re‑enable SSH, then your installer/contact can move
-  the app out of `/var/opt/hmi/data/ID5/Plugins` and restore the backup.
-- Only install on a vehicle **you own or are authorized to modify.**
+- **SSH flash won't complete:** nothing partial is left — the stock config is intact. Re-read
+  the Status message to your TunedByWali contact.
+- **Unit won't boot after enabling SSH:** use **Close SSH (restore factory)** first; serial/eMMC
+  recovery is the last resort.
+- **A gauge or CarPlay misbehaves:** re-enable SSH and restore the backup shown during install.
+- Install only on a vehicle **you own or are authorized to modify.**
 
-**Support:** message **b58devkev** on Instagram, or your TunedByWali / TBW Performance contact.
+**Support:** **b58devkev** on Instagram, or your TunedByWali / TBW Performance contact.
