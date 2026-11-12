@@ -102,6 +102,12 @@ ul.need li{margin:.3rem 0}
 output{display:block;min-height:2.6rem;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:10px;color:#eaf2ff;font-size:.95rem}
 .foot{margin-top:22px;color:var(--soft);font-size:.8rem;text-align:center;line-height:1.7}
 .foot a{color:var(--mut)}
+.addon{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px;margin-top:12px;background:var(--panel-2)}
+.addon h3{margin:0;font-size:.98rem}
+.addon .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:2px}
+.addon output{min-height:0;font-size:.86rem;margin-top:8px}
+.tag{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--mut);background:#1b2531;white-space:nowrap}
+.tag.pending{color:#ffd79a;border-color:#5a4a1f;background:#1e1708}
 @media (max-width:560px){ .step{flex:1 1 100%} }
 </style>
 
@@ -248,6 +254,15 @@ output{display:block;min-height:2.6rem;white-space:pre-wrap;overflow-wrap:anywhe
   </details>
 </section>
 
+<!-- ADD-ONS -->
+<section id="sec-addons" aria-disabled="true">
+  <span class="eyebrow">Extras</span>
+  <h2>Add-ons</h2>
+  <p class="sub">Community head-unit add-ons installed over the SSH you enabled — Android Auto, the AA main-menu tile, iDrive Plus info pages, EntryNav2 AA. Each installs from that project's own release files you stage in a kit folder. Non-commercial / community use; full credits in NOTICES.md.</p>
+  <div class="primary-row"><button type="button" id="addons-load" class="secondary"><span class="spin"></span><span>Show available add-ons</span></button></div>
+  <div id="addons"></div>
+</section>
+
 <!-- 6 SECURE -->
 <section id="sec6" aria-disabled="true">
   <span class="eyebrow">Step 6</span>
@@ -288,6 +303,7 @@ function phase(){
   $("sec4").setAttribute("aria-disabled", state.ready?"false":"true");
   $("sec5").setAttribute("aria-disabled", state.identified?"false":"true");
   $("sec6").setAttribute("aria-disabled", state.sshOn?"false":"true");
+  $("sec-addons").setAttribute("aria-disabled", state.sshOn?"false":"true");
   stepState("st1", haveIPs?"done":"active");
   stepState("st2", state.sshOn?"done":(haveIPs?"active":""));
   stepState("st3", state.identified?"done":(state.sshOn?"active":""));
@@ -407,6 +423,35 @@ $("inspect").onclick=()=>vehicle("inspect");
 $("install").onclick=()=>vehicle("install");
 $("carplay").onclick=()=>{ if(confirm("Apply the full-screen CarPlay patch over SSH?")) vehicle("carplay"); };
 $("carplay-activate").onclick=()=>{ if(confirm("Attempt to activate CarPlay on this unit? Nothing is written unless a verified profile or FSC is configured for your firmware.")) vehicle("carplay-activate"); };
+
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function addonBody(id,kit){return {id,kit,Head:$("Head").value.trim(),Gateway:$("Gateway").value.trim(),Local:local,Password:$("Password").value};}
+async function addonAction(id,cmd,kit,out){
+  out.textContent="Working…";
+  try{ const r=await request(cmd,addonBody(id,kit));
+    out.textContent=[r.Result, r.Backup&&("Backup: "+r.Backup), (r.Warnings||[]).join(" ")].filter(Boolean).join("\n");
+  }catch(e){ out.textContent = e.message==="__NO_ENDPOINT__" ? "Add-ons need the backend build (see docs/INTEGRATION.md)." : e.message; }
+}
+$("addons-load").onclick=async()=>{
+  try{
+    const r=await request("addons-list"); const host=$("addons"); host.replaceChildren();
+    for(const a of (r.Addons||[])){
+      const card=document.createElement("div"); card.className="addon";
+      card.innerHTML=`<div class="meta"><h3>${esc(a.name)}</h3><span class="tag${a.ready?'':' pending'}">${a.ready?esc(a.license):'needs verification'}</span></div>`
+        +`<p class="hint">${esc(a.desc)}</p>`
+        +`<p class="hint">by ${esc(a.credit)}${a.requires&&a.requires.length?" · requires "+esc(a.requires.join(", ")):""}<br>release: ${esc(a.source)}</p>`
+        +`<label>Kit folder <input class="kit" placeholder="/path/to/staged/${esc(a.id)}"></label>`
+        +`<div class="primary-row"><button type="button" class="ai">Install</button><button type="button" class="ar secondary">Remove</button><button type="button" class="as ghost">Status</button></div>`
+        +`<output class="ao"></output>`;
+      const kit=card.querySelector(".kit"), out=card.querySelector(".ao");
+      card.querySelector(".ai").onclick=()=>{ if(confirm("Install "+a.name+" over SSH? It backs up on-device first.")) addonAction(a.id,"addon-install",kit.value.trim(),out); };
+      card.querySelector(".ar").onclick=()=>{ if(confirm("Remove "+a.name+"?")) addonAction(a.id,"addon-remove","",out); };
+      card.querySelector(".as").onclick=()=>addonAction(a.id,"addon-status","",out);
+      host.appendChild(card);
+    }
+    if(!r.Addons||!r.Addons.length)$("addons").textContent="No add-ons listed.";
+  }catch(e){ if(e.message==="__NO_ENDPOINT__")return endpointMissing("Add-ons"); setPill("bad","Error");$("status").textContent=e.message; }
+};
 $("recover").onclick=()=>{ if(confirm("Have you closed every other installer and confirmed no other computer is installing to this car?")) vehicle("recover"); };
 $("revert").onclick=async()=>{
   if(!confirm("Close SSH and restore the factory starter.cfg? The head unit will reboot."))return;

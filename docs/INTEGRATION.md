@@ -25,9 +25,10 @@ message, so a gauge-only build still works.
 
 ## How the backend is wired (implemented)
 
-`source/main.go` routes `selfcheck|unlock|carplay|carplay-activate` to `runToolbox()`
-(`source/toolbox.go`), which runs `python -I tools/toolbox.py <op>` with the JSON request
-body on stdin and returns the JSON result. The backend is stdlib-only; OpenSSH and Python 3
+`source/main.go` routes `selfcheck|unlock|carplay|carplay-activate|addons-list|addon-install|
+addon-remove|addon-status` to `runToolbox()` (`source/toolbox.go`), which runs
+`python -I tools/toolbox.py <op>` with the JSON request body on stdin and returns the JSON
+result. The backend is stdlib-only; OpenSSH and Python 3
 ship on Win10/11 and macOS.
 
 `tools/toolbox.py` ops (reads JSON on stdin, writes JSON on stdout):
@@ -39,6 +40,10 @@ ship on Win10/11 and macOS.
 - **carplay** / **carplay-activate** → `tools/carplay_fsc.py`. Both back up on-device state,
   then apply **only** a profile verified for the firmware; with no profile they return
   `{Pending:true}` and write nothing. See CARPLAY_ACTIVATE_FSC.md.
+- **addons-list / addon-install / addon-remove / addon-status** → `tools/addons/addon_kit.py`,
+  the reusable SSH add-on installer (validate kit → remount → backup → upload → verified steps →
+  marker; clean removal). Installs from a staged release kit; ships no third-party binaries.
+  See ADDONS.md.
 
 Packaging: ship the built app **with the `tools/` directory beside it** (the dispatcher looks
 next to the executable, then the source tree). `hu_info.py` remains available as a CLI probe.

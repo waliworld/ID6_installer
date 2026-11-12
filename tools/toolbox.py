@@ -31,11 +31,18 @@ FLASHER = HERE / "ssh-unlock" / "nbt_optdebug_flash.py"
 HU_INFO = HERE / "hu-info" / "hu_info.py"
 PY = sys.executable or "python3"
 
+sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE / "addons"))
 try:
     import carplay_fsc
-except ImportError:  # allow running from any CWD
-    sys.path.insert(0, str(HERE))
+except ImportError:
     import carplay_fsc
+try:
+    import addon_kit
+except ImportError:
+    addon_kit = None
+
+from types import SimpleNamespace
 
 
 def _py(script: Path, args: list[str], timeout: int):
@@ -141,11 +148,45 @@ def carplay_activate(body: dict) -> dict:
     return carplay_fsc.activate(body)
 
 
+# -------------------------------------------------------------------- add-ons
+def _addon_args(body: dict) -> SimpleNamespace:
+    return SimpleNamespace(
+        id=body.get("id"), kit=body.get("kit"),
+        head=body.get("Head") or body.get("head"),
+        key=body.get("Key") or body.get("key"))
+
+
+def _addon(fn_name: str, body: dict) -> dict:
+    if addon_kit is None:
+        return {"Ok": False, "Result": "Add-on framework not available (tools/addons missing)."}
+    return getattr(addon_kit, fn_name)(_addon_args(body))
+
+
+def addons_list(body: dict) -> dict:
+    return _addon("do_list", body)
+
+
+def addon_install(body: dict) -> dict:
+    return _addon("do_install", body)
+
+
+def addon_remove(body: dict) -> dict:
+    return _addon("do_remove", body)
+
+
+def addon_status(body: dict) -> dict:
+    return _addon("do_status", body)
+
+
 OPS = {
     "selfcheck": selfcheck,
     "unlock": unlock,
     "carplay": carplay,
     "carplay-activate": carplay_activate,
+    "addons-list": addons_list,
+    "addon-install": addon_install,
+    "addon-remove": addon_remove,
+    "addon-status": addon_status,
 }
 
 

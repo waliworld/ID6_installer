@@ -21,6 +21,9 @@ job as one guided procedure:
   SSH aspect-ratio patch on older ones (the case the enabled SSH unlocks).
   *(see [docs/CARPLAY_FULLSCREEN.md](docs/CARPLAY_FULLSCREEN.md))*
 - **Secure** — closes SSH back up so a customer's unit isn't left open as root.
+- **Add-ons** — installs community head-unit add-ons over SSH (Android Auto / NBT-AAD, the AA
+  main-menu tile, iDrive Plus info pages, EntryNav2 AA) from each project's own release, with
+  on-device backup and clean removal. See [docs/ADDONS.md](docs/ADDONS.md).
 
 One branded wizard (`source/index.html`) is the whole UI; the stepper gates each stage and
 every risky action is confirmed. It's responsive for phone and desktop.
@@ -70,10 +73,12 @@ Preview the UI without a car: `cd source && go run . -no-browser`.
 - This is a **parked preview** — verify gauges, map switching and CarPlay on the car.
 - Install only on vehicles **you own or are authorized to modify**, and record who approved it.
 
-## Credits
+## Non-commercial / credits
 
-Gauge engine: upstream **NBT Evo Gauges**. SSH unlock: **Xayanix/nbt-evo-ssh-unlocker**
-(vendored). Identify/HU capabilities: **Viaszx/BMW_HU_Info**. Branded toolbox and
-integration: **TunedByWali · TBW Performance (Built by Wali LLC).**
+**This project is for non-commercial, community use** — not sold, not bundled with anything
+sold. Add-ons are installed from their authors' own releases, not redistributed here. Full
+credits and licenses (NBT Evo Gauges, Xayanix SSH unlocker, Viaszx HU Info, Sq00ky NBT-AAD,
+deathwalker80 nbt-aa-tile & iDrive Plus, Keukenrol123522, kizapp EntryNav2, BimmerWest
+remote-start FSC): see [NOTICES.md](NOTICES.md).
 
-Issues or wins: message **b58devkev** on Instagram.
+Toolbox + integration: **TunedByWali · TBW Performance.** Issues or wins: **b58devkev** on Instagram.

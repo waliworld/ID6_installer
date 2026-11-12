@@ -123,7 +123,8 @@ func main() {
 				checked.Ready = false
 			}
 			reply(checked)
-		case "selfcheck", "unlock", "carplay", "carplay-activate":
+		case "selfcheck", "unlock", "carplay", "carplay-activate",
+			"addons-list", "addon-install", "addon-remove", "addon-status":
 			body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<16))
 			if err != nil {
 				reply(inspection{Result: "Request too large or unreadable."})

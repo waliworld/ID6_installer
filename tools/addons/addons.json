@@ -1,0 +1,74 @@
+{
+  "__doc__": "Add-on registry for the TBW toolbox. Each add-on installs over root SSH from a *kit* folder you stage from that project's own release (no third-party binaries are shipped here). 'steps' are remote shell commands; {stage} = uploaded kit on the HU, {backup} = on-device backup dir. An add-on with no 'steps' installs as 'pending' until verified on a reference car. Credits/licenses: ../../NOTICES.md.",
+
+  "addons": {
+    "nbt-aad": {
+      "name": "Android Auto (NBT-AAD)",
+      "desc": "Wireless Android Auto for NBT Evo (ID5/ID6). The base the tile and iDrive Plus build on.",
+      "license": "PolyForm Noncommercial 1.0.0",
+      "credit": "Sq00ky / nanaisu - Supra-iDrive6-Android-Auto",
+      "source": "https://github.com/Sq00ky/Supra-iDrive6-Android-Auto/releases",
+      "requires": [],
+      "upload": "dir",
+      "backup_paths": ["/opt/conn/bin/start_webserver.sh"],
+      "files": [],
+      "steps": [],
+      "remove_steps": []
+    },
+
+    "aa-menu-tile": {
+      "name": "Android Auto main-menu tile",
+      "desc": "Standalone tile that reuses the CarLife entry so Android Auto shows on the home screen; press brings AA to the front. ~14KB, boot-started.",
+      "license": "PolyForm Noncommercial 1.0.0",
+      "credit": "deathwalker80 - nbt-aa-tile; mechanism by RRudkinp; NBT-AAD by Sq00ky",
+      "source": "https://github.com/deathwalker80/nbt-aa-tile/releases",
+      "requires": ["nbt-aad"],
+      "upload": "files",
+      "files": ["aa-tile", "aa-tile.size", "install-boot.sh", "remove-boot.sh", "status.sh", "aa-tile-launcher.sh", "hook.txt"],
+      "backup_paths": ["/opt/conn/bin/start_webserver.sh"],
+      "remount": "mount -o remount rw /net/hu-omap/fs/sda0 2>/dev/null; true",
+      "steps": [
+        "chmod 0755 {stage}/aa-tile {stage}/*.sh 2>/dev/null; true",
+        "on -f /net/hu-omap/ /bin/sh -c 'sh {stage}/install-boot.sh follow'"
+      ],
+      "remove_steps": [
+        "on -f /net/hu-omap/ /bin/sh -c 'sh /var/opt/aa-tile/remove-boot.sh 2>/dev/null || true'",
+        "touch /var/opt/aa-tile/DISABLED 2>/dev/null; true"
+      ]
+    },
+
+    "idrive-plus-plugins": {
+      "name": "iDrive Plus (info pages)",
+      "desc": "Weather/news/fuel/traffic/vehicle-status pages inside iDrive via the AA Wi-Fi. HU plugins install here; the phone app is sideloaded separately. News/fuel/traffic data is Italy-only as shipped.",
+      "license": "PolyForm Noncommercial 1.0.0",
+      "credit": "deathwalker80 - iDrive Plus",
+      "source": "https://github.com/deathwalker80/idrive-plus/releases",
+      "requires": ["nbt-aad"],
+      "upload": "dir",
+      "files": ["00-installa.sh", "10-togli.sh"],
+      "backup_paths": ["/opt/conn/bin/start_webserver.sh"],
+      "remount": "mount -o remount rw /net/hu-omap/fs/sda0 2>/dev/null; true",
+      "steps": [
+        "on -f /net/hu-omap/ /bin/sh -c 'sh {stage}/00-installa.sh bmw'"
+      ],
+      "remove_steps": [
+        "on -f /net/hu-omap/ /bin/sh -c 'sh {stage}/10-togli.sh 2>/dev/null || true'"
+      ]
+    },
+
+    "entrynav2-aa": {
+      "name": "Android Auto (EntryNav2)",
+      "desc": "Native wired Android Auto for the EntryNav2 iDrive6 variant. Needs a usb-device.conf set to your phone's USB port + VID/PID before the session can start.",
+      "license": "GPL-3.0",
+      "credit": "kizapp - entrynav2-idrive6-android-auto",
+      "source": "https://github.com/kizapp/entrynav2-idrive6-android-auto",
+      "requires": [],
+      "upload": "dir",
+      "files": [],
+      "backup_paths": [],
+      "remount": "mount -o remount rw /net/hu-omap/fs/sda0 2>/dev/null; true",
+      "steps": [],
+      "remove_steps": []
+    }
+  }
+}
