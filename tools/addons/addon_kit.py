@@ -75,6 +75,20 @@ def _reach(head, key) -> bool:
     return _ssh(head, key, "echo ok")[1] == "ok"
 
 
+def _hu_platform(head, key) -> tuple[str, str]:
+    """Identify the CONNECTED unit from the car itself, so an add-on can't be
+    installed to the wrong head unit. Returns (platform, firmware_string)."""
+    fw = _ssh(head, key, "cat /opt/sys/etc/nbt_version.txt 2>/dev/null")[1]
+    if not fw:
+        fw = _ssh(head, key, "uname -a")[1]
+    f = (fw or "").upper()
+    if "NBTEVO_" in f or "NBT EVO" in f:
+        return "nbt_evo", fw
+    if "ENTRYEVO" in f or "ENTRYNAV" in f or "HU_ENTRY" in f or "ENTRY" in f:
+        return "entrynav2", fw
+    return "unknown", fw
+
+
 # ---------------------------------------------------------------- list/status
 def do_list(_a) -> dict:
     items = []
@@ -126,10 +140,31 @@ def do_install(a) -> dict:
     if not _reach(a.head, a.key):
         return {"Ok": False, "Result": f"Could not reach root@{a.head}. Enable SSH first and confirm the IP."}
 
-    # Prerequisite notice (non-fatal).
-    warnings = []
+    # HARD GUARD: never install an add-on to the wrong head unit.
+    want = m.get("platform", "nbt_evo")
+    detected, fw = _hu_platform(a.head, a.key)
+    if want == "nbt_evo" and detected != "nbt_evo":
+        return {"Ok": False, "Platform": detected, "Blocked": True,
+                "Result": f"Refusing to install '{m.get('name', a.id)}': it is for NBT Evo, but the "
+                          f"connected unit did not identify as NBT Evo (detected: {detected}; firmware: "
+                          f"{fw or 'unknown'}). Nothing was written."}
+    if want == "entrynav2" and detected == "nbt_evo":
+        return {"Ok": False, "Platform": detected, "Blocked": True,
+                "Result": f"Refusing to install '{m.get('name', a.id)}': it is for EntryNav2, but the "
+                          f"connected unit is an NBT Evo. Nothing was written."}
+
+    # Prerequisite check (e.g. Android Auto base must be present for the tile).
+    if m.get("verify"):
+        rc, _, _ = _ssh(a.head, a.key, m["verify"])
+        if rc != 0:
+            return {"Ok": False, "Blocked": True,
+                    "Result": f"Prerequisite missing for '{m.get('name', a.id)}': "
+                              + m.get("verify_hint", "a required component was not found") + ". Install "
+                              + (", ".join(m.get("requires", [])) or "the prerequisite") + " first. Nothing was written."}
+
+    warnings = [f"Platform confirmed: {detected}."]
     for req in m.get("requires", []):
-        warnings.append(f"Requires '{req}' already installed on the unit.")
+        warnings.append(f"Requires '{req}'.")
 
     # 1) workspace + backup
     stage = f"/tmp/tbw-{a.id}"

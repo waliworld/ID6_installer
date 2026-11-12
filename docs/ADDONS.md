@@ -10,11 +10,20 @@ on-device first and recording a removal marker. **No third-party binaries ship i
 
 `addon-install {id, kit, Head}` →
 1. validate the kit (expected files present),
-2. remount the HU filesystem read-write,
-3. back up each `backup_paths` entry to `/var/opt/tbw-addons/<id>.<timestamp>/`,
-4. upload the kit (whole folder, or listed files),
-5. run the add-on's verified `steps`,
-6. write an install marker. Any failed step stops and points at the backup.
+2. **platform guard** — identify the *connected* unit from the car itself and refuse if it
+   doesn't match the add-on's `platform` (an NBT-Evo program can't land on an EntryNav2, or
+   vice versa). UI filtering by platform is the first line; this server-side guard is the one
+   that actually protects the unit.
+3. **prerequisite check** — run the add-on's `verify` (e.g. Android Auto's state file must
+   exist before the tile or iDrive Plus installs); refuse if missing.
+4. remount the HU filesystem read-write,
+5. back up each `backup_paths` entry to `/var/opt/tbw-addons/<id>.<timestamp>/`,
+6. upload the kit (whole folder, or listed files),
+7. run the add-on's verified `steps`,
+8. write an install marker. Any failed step stops and points at the backup.
+
+Each add-on declares `platform` (`nbt_evo` / `entrynav2`), and dependent add-ons declare a
+`verify` command + `verify_hint`. Both guards run before anything is written.
 
 `addon-remove` runs the add-on's `remove_steps` (restoring hooked files); `addon-status`
 reports installed/not. In the wizard: **Add-ons → Show available add-ons**, then Install /
