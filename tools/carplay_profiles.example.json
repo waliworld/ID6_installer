@@ -1,0 +1,21 @@
+{
+  "__doc__": "Copy to carplay_profiles.json and fill in ONLY values verified on a reference car. Keys are matched (case-insensitive) against the unit firmware string, or use 'match'. Until a block exists for a firmware, the toolbox returns 'pending' and writes nothing. See docs/CARPLAY_ACTIVATE_FSC.md.",
+
+  "NBTevo_N": {
+    "kind": "fullscreen",
+    "match": "NBTevo_N",
+    "backup_paths": ["/opt/hmi/ID5/etc"],
+    "steps": [
+      "echo REPLACE-with-verified-aspect-ratio-change-for-this-firmware; false"
+    ]
+  },
+
+  "carplay-activate-example": {
+    "kind": "activate",
+    "match": "NBTevo_N",
+    "backup_paths": ["/var/opt/hmi/data/ID5/fsc", "/opt/hmi/ID5/etc"],
+    "steps": [
+      "echo REPLACE-with-verified-FSC-install-steps; echo fsc={fsc}; false"
+    ]
+  }
+}

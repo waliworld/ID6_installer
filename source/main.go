@@ -123,6 +123,13 @@ func main() {
 				checked.Ready = false
 			}
 			reply(checked)
+		case "selfcheck", "unlock", "carplay", "carplay-activate":
+			body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<16))
+			if err != nil {
+				reply(inspection{Result: "Request too large or unreadable."})
+				return
+			}
+			reply(runToolbox(strings.TrimPrefix(r.URL.Path, prefix), body))
 		case "quit":
 			reply(inspection{Result: "Installer closed."})
 			time.AfterFunc(300*time.Millisecond, func() { os.Exit(0) })

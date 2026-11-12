@@ -1,44 +1,47 @@
 # TBW NBT Evo Toolbox — integration map (shop/dev)
 
 This repo merges three open-source projects into one end-user procedure. The wizard
-(`source/index.html`) is the single UI; each stage calls one backend endpoint. The
-gauge-install engine already exists in Go. The SSH, Identify and CarPlay stages are
-wired in the UI and need their backend endpoints added to the Go app (each one shells
-out to a vendored tool). Nothing here changes the tested gauge-install logic.
+(`source/index.html`) is the single UI served by the Go app. The gauge engine stays in
+Go; the SSH / self-check / CarPlay stages are a **tested Python backend**
+(`tools/toolbox.py`) that the Go server shells out to via a thin dispatcher
+(`source/toolbox.go`). One app, one build — all new logic lives in Python so it's
+verifiable without the Go toolchain.
 
 ## Stage → tool → endpoint
 
 | Wizard stage | Backend endpoint | Implemented by | Status |
 |---|---|---|---|
+| (launch) self-check | `selfcheck` | `tools/toolbox.py` | ✅ implemented + tested |
 | 1 Connect | `discover` | `enet.go` (existing) | ✅ works today |
-| 2 Enable SSH | `unlock` `{selftest|commit|revert}` | `tools/ssh-unlock/nbt_optdebug_flash.py` | ⚠️ endpoint to add |
-| 3 Identify | `inspect` (existing) + `tools/hu-info/hu_info.py` | `install.go` inspect + hu_info | ✅ inspect works; identify extras optional |
+| 2 Enable SSH | `unlock` `{selftest|commit|revert}` | `tools/toolbox.py` → `tools/ssh-unlock/` | ✅ implemented; flash path needs a car |
+| 3 Identify | `inspect` (existing) | `install.go` inspect | ✅ works today; `hu_info.py` additive |
 | 4 Install gauges | `install` / `recover` | `install.go` (existing) | ✅ works today |
-| 5 Full-screen CarPlay | `carplay` | SSH aspect-ratio patch (see CARPLAY_FULLSCREEN.md) | ⛔ needs reference-car verification |
-| 6 Secure | `unlock` `{revert}` | `tools/ssh-unlock/nbt_optdebug_flash.py` | ⚠️ endpoint to add |
+| 5 Full-screen CarPlay | `carplay` | `tools/carplay_fsc.py` | ⛔ gated — needs verified profile |
+| 5b Activate CarPlay | `carplay-activate` | `tools/carplay_fsc.py` | ⛔ gated — needs verified profile / FSC |
+| 6 Secure | `unlock` `{revert}` | `tools/toolbox.py` → `tools/ssh-unlock/` | ✅ implemented; needs a car |
 
 The UI degrades gracefully: any endpoint that returns 404 shows a "needs app build"
-message instead of breaking, so shipping the gauge-only build still works.
+message, so a gauge-only build still works.
 
-## Endpoints to add to the Go app
+## How the backend is wired (implemented)
 
-All new endpoints shell out to the vendored Python (OpenSSH + Python 3 ship on
-Win10/11 and macOS). Run the flasher with `-I` and pass the gateway as an argument.
+`source/main.go` routes `selfcheck|unlock|carplay|carplay-activate` to `runToolbox()`
+(`source/toolbox.go`), which runs `python -I tools/toolbox.py <op>` with the JSON request
+body on stdin and returns the JSON result. The backend is stdlib-only; OpenSSH and Python 3
+ship on Win10/11 and macOS.
 
-- **`POST /…/unlock`**
-  - `{selftest:true}` → `python nbt_optdebug_flash.py --selftest` → `{Pass, Result}`.
-  - `{commit:true, Gateway, Head}` → `--commit --gateway <ip>` (run detached so an SSH
-    drop can't tear the write) → `{Ok, Vin, Result}`.
-  - `{revert:true, Gateway}` → `--revert --gateway <ip>` → `{Ok, Result}`.
-  - Gate `commit` on the UI's risk-ack + typed `UNLOCK` (already enforced client-side;
-    re-check server-side).
-- **`POST /…/carplay`** → apply the verified aspect-ratio patch over SSH, with backup +
-  read-back, same discipline as the gauge install. **Do not enable until the exact
-  patch is confirmed on a reference car** (CARPLAY_FULLSCREEN.md). Until then return 404
-  so the UI shows "pending".
-- **`identify`** (optional) → run `hu_info.py --head <ip> --json` for the richer read-out.
-  The existing `inspect` already returns Version/Display/Ready, which the wizard uses;
-  `hu_info` is additive (installed apps, error tail, CarPlay routing echo).
+`tools/toolbox.py` ops (reads JSON on stdin, writes JSON on stdout):
+- **selfcheck** → `{Ok, Checks{python, ssh, enet_link, tools_present, flasher_selftest}, Warnings}`.
+  Runs on launch; proves the environment and the unlock engine before any car is touched.
+- **unlock** → `{selftest}` runs the offline self-test; `{commit, Gateway}` / `{revert, Gateway}`
+  drive `ssh-unlock/nbt_optdebug_flash.py --commit|--revert --host <gw> --no-discover`
+  (200 s cap, under the server's 4-min write timeout). Returns `{Ok, Vin?, Result}`.
+- **carplay** / **carplay-activate** → `tools/carplay_fsc.py`. Both back up on-device state,
+  then apply **only** a profile verified for the firmware; with no profile they return
+  `{Pending:true}` and write nothing. See CARPLAY_ACTIVATE_FSC.md.
+
+Packaging: ship the built app **with the `tools/` directory beside it** (the dispatcher looks
+next to the executable, then the source tree). `hu_info.py` remains available as a CLI probe.
 
 ## Firmware intersection — the gating rule
 

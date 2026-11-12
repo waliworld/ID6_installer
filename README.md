@@ -25,15 +25,22 @@ job as one guided procedure:
 One branded wizard (`source/index.html`) is the whole UI; the stepper gates each stage and
 every risky action is confirmed. It's responsive for phone and desktop.
 
-## Status of each stage
+## Self-reliant backend
+
+The app validates itself on launch (**self-check**: Python, OpenSSH, ENET link, bundled
+tools, and an offline self-test of the SSH flasher) and runs every stage itself. The Go
+server owns the gauge engine; the SSH / self-check / CarPlay stages are a tested Python
+backend (`tools/toolbox.py`) the server shells out to via `source/toolbox.go` — one app,
+one build. See [docs/INTEGRATION.md](docs/INTEGRATION.md).
 
 | Stage | Status |
 |---|---|
-| Connect, Install gauges, Identify (core) | ✅ work today (existing Go engine) |
-| Enable SSH / Close SSH | ⚠️ UI wired; add the `unlock` endpoint that calls `tools/ssh-unlock` (see INTEGRATION.md) |
-| Full-screen CarPlay | ⛔ UI wired; the SSH patch must be **verified on a reference car** before enabling |
+| Self-check (launch) | ✅ implemented + tested |
+| Connect, Install gauges, Identify (core) | ✅ work today (Go engine) |
+| Enable / Close SSH | ✅ implemented (drives the vendored flasher); flash needs a car |
+| Full-screen CarPlay / Activate CarPlay | ⛔ implemented but **gated** — applies only a profile verified on a reference car; otherwise reports "pending" and writes nothing |
 
-The wizard degrades gracefully: any stage whose backend isn't built yet shows a clear
+The wizard degrades gracefully: any stage whose backend isn't present shows a clear
 "needs app build" note instead of breaking, so a gauge-only build still ships.
 
 ## Two firmware gates (don't assume overlap)

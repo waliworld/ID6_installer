@@ -243,7 +243,8 @@ output{display:block;min-height:2.6rem;white-space:pre-wrap;overflow-wrap:anywhe
   <div id="cp-unknown" hidden class="callout">Run Identify first to determine the CarPlay method for this unit.</div>
   <details>
     <summary>My unit has no CarPlay at all</summary>
-    <p class="hint">Full-screen only reshapes CarPlay that's already active. If the unit was never CarPlay-enabled, its CarPlay <strong>FSC</strong> has to be activated first (a separate licensed step). Once CarPlay runs — even half-screen — this step makes it full-screen.</p>
+    <p class="hint">If the unit was never CarPlay-enabled, its CarPlay <strong>FSC</strong> has to be activated first. The toolbox backs up the on-device FSC store, applies a verified activation, and checks the result — but only once a verified profile or FSC is configured for your firmware (see docs/CARPLAY_ACTIVATE_FSC.md). Until then it reports "pending" and writes nothing.</p>
+    <div class="primary-row"><button type="button" id="carplay-activate" class="secondary"><span class="spin"></span><span>Activate CarPlay</span></button></div>
   </details>
 </section>
 
@@ -396,15 +397,16 @@ async function vehicle(action){
         state.identified=false; $("idcard").hidden=true;
         $("status").textContent="First contact — confirm the fingerprint, then Trust & identify."; controls(); return; }
     }
-    const good = r.Ready===true || /Installed and verified|full[- ]screen|CarPlay|done|OK/i.test(r.Result||"");
-    setPill(good?"ok":"warn", good?"Done":"Checked");
-    $("status").textContent=[r.Version,r.Display&&"Display "+r.Display,r.Touch,r.Result].filter(Boolean).join("\n")||"Done.";
-  }catch(e){ if(e.message==="__NO_ENDPOINT__")return endpointMissing(action==="inspect"?"Identify":action==="carplay"?"Full-screen CarPlay":"That step"); setPill("bad","Error");$("status").textContent=e.message; }
+    if(r.Pending){ setPill("warn","Pending verification"); }
+    else { const good = r.Ok===true || r.Ready===true || /Installed and verified|full[- ]screen|activation applied|done|OK/i.test(r.Result||""); setPill(good?"ok":"warn", good?"Done":"Checked"); }
+    $("status").textContent=[r.Version,r.Display&&"Display "+r.Display,r.Touch,r.Backup&&"Backup: "+r.Backup,r.Result].filter(Boolean).join("\n")||"Done.";
+  }catch(e){ if(e.message==="__NO_ENDPOINT__")return endpointMissing(action==="inspect"?"Identify":action==="carplay"?"Full-screen CarPlay":action==="carplay-activate"?"Activate CarPlay":"That step"); setPill("bad","Error");$("status").textContent=e.message; }
   finally{controls();}
 }
 $("inspect").onclick=()=>vehicle("inspect");
 $("install").onclick=()=>vehicle("install");
 $("carplay").onclick=()=>{ if(confirm("Apply the full-screen CarPlay patch over SSH?")) vehicle("carplay"); };
+$("carplay-activate").onclick=()=>{ if(confirm("Attempt to activate CarPlay on this unit? Nothing is written unless a verified profile or FSC is configured for your firmware.")) vehicle("carplay-activate"); };
 $("recover").onclick=()=>{ if(confirm("Have you closed every other installer and confirmed no other computer is installing to this car?")) vehicle("recover"); };
 $("revert").onclick=async()=>{
   if(!confirm("Close SSH and restore the factory starter.cfg? The head unit will reboot."))return;
@@ -417,5 +419,14 @@ $("revert").onclick=async()=>{
 };
 $("quit").onclick=async()=>{ try{await request("quit");}catch(e){} setPill("","Closed");$("status").textContent="Toolbox closed. You can close this tab."; };
 controls();
+// Self-check on launch: the app validates its own environment before you touch a car.
+(async()=>{ try{
+  const r=await request("selfcheck");
+  const w=r.Warnings||[];
+  setPill(r.Ok?"ok":"warn", r.Ok?"Self-check OK":"Check setup");
+  $("status").textContent = r.Ok
+    ? "Self-check passed. Plug in the ENET cable and press “Find my car”."
+    : "Setup needs attention:\n• "+w.join("\n• ");
+}catch(e){ /* gauge-only build without the backend: keep the default prompt */ } })();
 </script>
 </html>
