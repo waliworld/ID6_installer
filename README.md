@@ -22,8 +22,11 @@ job as one guided procedure:
   *(see [docs/CARPLAY_FULLSCREEN.md](docs/CARPLAY_FULLSCREEN.md))*
 - **Secure** — closes SSH back up so a customer's unit isn't left open as root.
 - **Add-ons** — installs community head-unit add-ons over SSH (Android Auto / NBT-AAD, the AA
-  main-menu tile, iDrive Plus info pages, EntryNav2 AA) from each project's own release, with
-  on-device backup and clean removal. See [docs/ADDONS.md](docs/ADDONS.md).
+  main-menu tile, iDrive Plus info pages, EntryNav2 AA — kizapp and entry-aad) from each project's
+  own release, with on-device backup and clean removal. See [docs/ADDONS.md](docs/ADDONS.md).
+- **Coding & FSC** — read/sign/write coding and mint/apply feature codes (including real CarPlay
+  activation, FSC `0x0143` + `CARPLAY_SWT`) via the vendored **MIT nbt-evo-toolkit**. Needs your own
+  PSdZData and the toolkit's owner-VIN consent gate. See [docs/CODING_FSC.md](docs/CODING_FSC.md).
 
 One branded wizard (`source/index.html`) is the whole UI; the stepper gates each stage and
 every risky action is confirmed. It's responsive for phone and desktop.

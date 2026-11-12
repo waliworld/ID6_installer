@@ -33,14 +33,16 @@ PY = sys.executable or "python3"
 
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE / "addons"))
-try:
-    import carplay_fsc
-except ImportError:
-    import carplay_fsc
+sys.path.insert(0, str(HERE / "coding"))
+import carplay_fsc
 try:
     import addon_kit
 except ImportError:
     addon_kit = None
+try:
+    import toolkit_bridge
+except ImportError:
+    toolkit_bridge = None
 
 from types import SimpleNamespace
 
@@ -145,7 +147,17 @@ def carplay(body: dict) -> dict:
 
 
 def carplay_activate(body: dict) -> dict:
+    # Prefer the MIT nbt-evo-toolkit (real FSC/coding engine) when present.
+    if toolkit_bridge is not None and toolkit_bridge.present():
+        return toolkit_bridge.carplay_activate(body)
     return carplay_fsc.activate(body)
+
+
+# --------------------------------------------------------- coding / FSC (toolkit)
+def _tk(fn_name: str, body: dict) -> dict:
+    if toolkit_bridge is None:
+        return {"Ok": False, "Result": "Coding/FSC backend (nbt-evo-toolkit) not available."}
+    return getattr(toolkit_bridge, fn_name)(body)
 
 
 # -------------------------------------------------------------------- add-ons
@@ -187,6 +199,12 @@ OPS = {
     "addon-install": addon_install,
     "addon-remove": addon_remove,
     "addon-status": addon_status,
+    "fsc-selftest": lambda b: _tk("fsc_selftest", b),
+    "fsc-catalog": lambda b: _tk("fsc_catalog", b),
+    "fsc-keygen": lambda b: _tk("fsc_keygen", b),
+    "fsc-mint": lambda b: _tk("fsc_mint", b),
+    "coding-identify": lambda b: _tk("coding_identify", b),
+    "coding-backup": lambda b: _tk("coding_backup", b),
 }
 
 

@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 source/dist/
 source/payload/*/
+fsc-keys/
+*.fsc
+owner_key.json
+third_party/**/__pycache__/

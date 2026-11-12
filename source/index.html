@@ -247,9 +247,10 @@ output{display:block;min-height:2.6rem;white-space:pre-wrap;overflow-wrap:anywhe
     <div class="primary-row"><button type="button" id="carplay" class="secondary"><span class="spin"></span><span>Enable full-screen CarPlay</span></button></div>
   </div>
   <div id="cp-unknown" hidden class="callout">Run Identify first to determine the CarPlay method for this unit.</div>
+  <div class="primary-row"><button type="button" id="fsc-selftest" class="ghost"><span class="spin"></span><span>Test FSC engine</span></button></div>
   <details>
     <summary>My unit has no CarPlay at all</summary>
-    <p class="hint">If the unit was never CarPlay-enabled, its CarPlay <strong>FSC</strong> has to be activated first. The toolbox backs up the on-device FSC store, applies a verified activation, and checks the result — but only once a verified profile or FSC is configured for your firmware (see docs/CARPLAY_ACTIVATE_FSC.md). Until then it reports "pending" and writes nothing.</p>
+    <p class="hint">CarPlay activation is real now, backed by the MIT nbt-evo-toolkit: mint the CarPlay FSC (<code>0x0143</code>) under your own trust anchor, install your blobB, apply it, and set the <code>CARPLAY_SWT</code> coding bit (full ordered recipe in docs/CODING_FSC.md). Coding/FSC writes need your own <strong>PSdZData</strong> and the toolkit's owner-VIN consent gate; the local mint runs now, the two car-write steps follow the toolkit runbooks.</p>
     <div class="primary-row"><button type="button" id="carplay-activate" class="secondary"><span class="spin"></span><span>Activate CarPlay</span></button></div>
   </details>
 </section>
@@ -422,7 +423,10 @@ async function vehicle(action){
 $("inspect").onclick=()=>vehicle("inspect");
 $("install").onclick=()=>vehicle("install");
 $("carplay").onclick=()=>{ if(confirm("Apply the full-screen CarPlay patch over SSH?")) vehicle("carplay"); };
-$("carplay-activate").onclick=()=>{ if(confirm("Attempt to activate CarPlay on this unit? Nothing is written unless a verified profile or FSC is configured for your firmware.")) vehicle("carplay-activate"); };
+$("carplay-activate").onclick=()=>{ if(confirm("Attempt to activate CarPlay on this unit? The local FSC mint runs; car-write steps need your PSdZData + consent VIN and follow the toolkit runbooks.")) vehicle("carplay-activate"); };
+$("fsc-selftest").onclick=async()=>{ setPill("run","FSC self-test"); $("status").textContent="Proving the FSC mint/verify engine offline (no car)…";
+  try{ const r=await request("fsc-selftest"); setPill(r.Ok?"ok":"warn", r.Ok?"FSC engine OK":"FSC check"); $("status").textContent=r.Result; }
+  catch(e){ if(e.message==="__NO_ENDPOINT__")return endpointMissing("FSC engine"); setPill("bad","Error"); $("status").textContent=e.message; } };
 
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function addonBody(id,kit){return {id,kit,Head:$("Head").value.trim(),Gateway:$("Gateway").value.trim(),Local:local,Password:$("Password").value};}

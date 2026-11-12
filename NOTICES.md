@@ -37,6 +37,18 @@ traffic are Italy-only as shipped.
 kizapp. **GPL-3.0** (keep its LICENSE and offer source with any distribution of that component).
 > github.com/kizapp/entrynav2-idrive6-android-auto
 
+### Wireless Android Auto (EntryNav2) — entry-aad
+Jiraiya43 (port of Sq00ky's NBT-AAD). **PolyForm Noncommercial 1.0.0.**
+> © 2026 Jiraiya43 — entry-aad (https://github.com/Jiraiya43/entry-aad)
+
+### NBT EVO Toolkit — coding & FSC engine
+vandelayautollc. **MIT License.** Vendored under `third_party/nbt-evo-toolkit/`
+(commit in `.vendored-commit`); its LICENSE is kept with it. Provides the coding
+(read/sign/write) and FSC (blobB trust-anchor mint/verify/apply) engines the toolbox
+uses for CarPlay and other coding/FSC work. Ships no BMW data or keys — you supply your
+own PSdZData, and it enforces an owner-VIN consent gate.
+> MIT © vandelayautollc — nbt-evo-toolkit (https://github.com/vandelayautollc/nbt-evo-toolkit)
+
 ### Remote-start FSC generator
 BimmerWest. **No license file (all rights reserved).** Integrated **by reference only** — not
 copied into this repo. Treat generated `.fsc` files as vehicle-specific data. Ask the author

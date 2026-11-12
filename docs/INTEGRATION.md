@@ -44,6 +44,11 @@ ship on Win10/11 and macOS.
   the reusable SSH add-on installer (validate kit → remount → backup → upload → verified steps →
   marker; clean removal). Installs from a staged release kit; ships no third-party binaries.
   See ADDONS.md.
+- **fsc-selftest / fsc-catalog / fsc-keygen / fsc-mint / coding-identify / coding-backup** and the
+  toolkit-backed **carplay-activate** → `tools/coding/toolkit_bridge.py`, which drives the vendored
+  **MIT nbt-evo-toolkit** (`third_party/nbt-evo-toolkit`) for real coding + FSC. Local mint/verify/
+  catalog run offline; coding/FSC writes need the operator's PSdZData and the toolkit's owner-VIN
+  consent gate (never bypassed). See CODING_FSC.md.
 
 Packaging: ship the built app **with the `tools/` directory beside it** (the dispatcher looks
 next to the executable, then the source tree). `hu_info.py` remains available as a CLI probe.
