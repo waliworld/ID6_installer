@@ -1,30 +1,41 @@
 {
-  "__doc__": "Add-on registry for the TBW toolbox. Each add-on installs over root SSH from a *kit* folder you stage from that project's own release (no third-party binaries are shipped here). 'steps' are remote shell commands; {stage} = uploaded kit on the HU, {backup} = on-device backup dir. An add-on with no 'steps' installs as 'pending' until verified on a reference car. Credits/licenses: ../../NOTICES.md.",
+  "__doc__": "Add-on registry for the TBW toolbox. Each add-on installs over root SSH from a *kit* folder you stage from that project's own release (no third-party binaries are shipped here). Steps are remote shell commands; {stage} = uploaded kit on the HU, {backup} = on-device backup dir. The installer identifies the connected unit and refuses a platform mismatch, and runs each add-on's 'verify' prerequisite, before writing anything. Steps are transcribed from each project's published install guide; confirm on a reference car. Credits/licenses: ../../NOTICES.md.",
 
   "addons": {
     "nbt-aad": {
       "name": "Android Auto (NBT-AAD)",
-      "desc": "Wireless Android Auto for NBT Evo (ID5/ID6). The base the tile and iDrive Plus build on.",
+      "desc": "Wireless Android Auto for NBT Evo (ID5/ID6). The base the tile and iDrive Plus build on. Apple CarPlay must be active (NBT-AAD uses its Wi-Fi).",
+      "platform": "nbt_evo",
       "license": "PolyForm Noncommercial 1.0.0",
       "credit": "Sq00ky / nanaisu - Supra-iDrive6-Android-Auto",
       "source": "https://github.com/Sq00ky/Supra-iDrive6-Android-Auto/releases",
       "requires": [],
       "upload": "dir",
-      "backup_paths": ["/opt/conn/bin/start_webserver.sh"],
-      "files": [],
-      "steps": [],
-      "remove_steps": []
+      "files": ["nbt-aad", "pf_aa", "Releases"],
+      "backup_paths": ["/opt/hmi/ID5/data/ro/Plugins/NbtAad"],
+      "remount": "mount -o remount rw /net/hu-omap/fs/sda0 2>/dev/null; true",
+      "steps": [
+        "mount -o remount rw /net/hu-omap/fs/sda0",
+        "mkdir -p /opt/aa && cp {stage}/nbt-aad /opt/aa/ && chmod +x /opt/aa/nbt-aad",
+        "mkdir -p /opt/hmi/ID5/data/ro/Plugins/NbtAad && cp {stage}/Releases/* /opt/hmi/ID5/data/ro/Plugins/NbtAad/",
+        "cp {stage}/pf_aa /dev/shmem/ && chmod +x /dev/shmem/pf_aa && /dev/shmem/pf_aa --install && /dev/shmem/pf_aa --check",
+        "OnOffDSICommander appreset"
+      ],
+      "remove_steps": [
+        "mount -o remount rw /net/hu-omap/fs/sda0; /dev/shmem/pf_aa --uninstall 2>/dev/null || true; rm -rf /opt/hmi/ID5/data/ro/Plugins/NbtAad /opt/aa/nbt-aad"
+      ]
     },
 
     "aa-menu-tile": {
       "name": "Android Auto main-menu tile",
       "desc": "Standalone tile that reuses the CarLife entry so Android Auto shows on the home screen; press brings AA to the front. ~14KB, boot-started.",
+      "platform": "nbt_evo",
       "license": "PolyForm Noncommercial 1.0.0",
       "credit": "deathwalker80 - nbt-aa-tile; mechanism by RRudkinp; NBT-AAD by Sq00ky",
       "source": "https://github.com/deathwalker80/nbt-aa-tile/releases",
       "requires": ["nbt-aad"],
-      "verify": "test -e /dev/shmem/nbt-aad-state",
-      "verify_hint": "Android Auto (NBT-AAD) must be installed and running first (its state file /dev/shmem/nbt-aad-state was not found)",
+      "verify": "test -e /opt/aa/nbt-aad",
+      "verify_hint": "Android Auto (NBT-AAD) must be installed first (/opt/aa/nbt-aad was not found)",
       "upload": "files",
       "files": ["aa-tile", "aa-tile.size", "install-boot.sh", "remove-boot.sh", "status.sh", "aa-tile-launcher.sh", "hook.txt"],
       "backup_paths": ["/opt/conn/bin/start_webserver.sh"],
@@ -42,38 +53,53 @@
     "idrive-plus-plugins": {
       "name": "iDrive Plus (info pages)",
       "desc": "Weather/news/fuel/traffic/vehicle-status pages inside iDrive via the AA Wi-Fi. HU plugins install here; the phone app is sideloaded separately. News/fuel/traffic data is Italy-only as shipped.",
+      "platform": "nbt_evo",
       "license": "PolyForm Noncommercial 1.0.0",
       "credit": "deathwalker80 - iDrive Plus",
       "source": "https://github.com/deathwalker80/idrive-plus/releases",
       "requires": ["nbt-aad"],
-      "verify": "test -e /dev/shmem/nbt-aad-state",
-      "verify_hint": "Android Auto (NBT-AAD) must be installed and running first (its state file /dev/shmem/nbt-aad-state was not found)",
+      "verify": "test -e /opt/aa/nbt-aad",
+      "verify_hint": "Android Auto (NBT-AAD) must be installed first (/opt/aa/nbt-aad was not found)",
       "upload": "dir",
       "files": ["00-installa.sh", "10-togli.sh"],
       "backup_paths": ["/opt/conn/bin/start_webserver.sh"],
       "remount": "mount -o remount rw /net/hu-omap/fs/sda0 2>/dev/null; true",
       "steps": [
-        "on -f /net/hu-omap/ /bin/sh -c 'sh {stage}/00-installa.sh bmw'"
+        "chmod 0755 {stage}/*.sh 2>/dev/null; true",
+        "on -f /net/hu-omap/ /bin/sh -c 'cd {stage} && sh ./00-installa.sh bmw'"
       ],
       "remove_steps": [
-        "on -f /net/hu-omap/ /bin/sh -c 'sh {stage}/10-togli.sh 2>/dev/null || true'"
+        "on -f /net/hu-omap/ /bin/sh -c 'cd {stage} && sh ./10-togli.sh 2>/dev/null || true'"
       ]
     },
 
     "entry-aad": {
       "name": "Wireless Android Auto (EntryNav2)",
-      "desc": "Wireless Android Auto for EntryNav2 (1280x480, CarPlay Wi-Fi). Installs /opt/aa + /opt/hmi/data/ro/Plugins/EntryAad; built-in compat check; reversible. Needs the HU root password (EntryNav2 roots differently from NBT Evo). Alt: kizapp/entrynav2-idrive6-android-auto (GPL-3.0).",
+      "desc": "Wireless Android Auto for EntryNav2 (1280x480, CarPlay Wi-Fi). Installs /opt/aa + /opt/hmi/data/ro/Plugins/EntryAad; runs its own --compat check first; reversible. EntryNav2 roots differently from NBT Evo. Alt: kizapp/entrynav2-idrive6-android-auto (GPL-3.0).",
       "platform": "entrynav2",
       "license": "PolyForm Noncommercial 1.0.0",
       "credit": "Jiraiya43 - entry-aad (port of Sq00ky's NBT-AAD); alt: kizapp",
       "source": "https://github.com/Jiraiya43/entry-aad/releases",
       "requires": [],
       "upload": "dir",
-      "files": [],
-      "backup_paths": [],
-      "remount": "mount -o remount rw /net/hu-omap/fs/sda0 2>/dev/null; true",
-      "steps": [],
-      "remove_steps": []
+      "files": ["opt/aa/entry-aad", "opt/aa/aa-supervisor"],
+      "backup_paths": ["/opt/hmi/data/ro/Plugins/EntryAad"],
+      "remount": "mount -o remount,rw / 2>/dev/null; true",
+      "steps": [
+        "chmod 0755 {stage}/opt/aa/aa-supervisor {stage}/opt/aa/entry-aad 2>/dev/null; true",
+        "busybox timeout -t 60 {stage}/opt/aa/aa-supervisor --compat",
+        "mount -o remount,rw /",
+        "mkdir -p /opt/hmi/data/ro/Plugins/EntryAad /opt/aa",
+        "rm -f /opt/hmi/data/ro/Plugins/EntryAad/* /opt/aa/*",
+        "cd {stage} && cp opt/hmi/data/ro/Plugins/EntryAad/* /opt/hmi/data/ro/Plugins/EntryAad/ && cp opt/aa/* /opt/aa/",
+        "chmod 755 /opt/aa/entry-aad /opt/aa/aa-supervisor /opt/hmi/data/ro/Plugins/EntryAad/libEntryAad.so",
+        "touch /opt/aa/.installed-by-entryaad /opt/hmi/data/ro/Plugins/EntryAad/.installed-by-entryaad",
+        "mkdir -p /var/local/data/AA; [ -e /var/local/data/AA/vehicle ] || printf 'model=320d\\nyear=2020\\n' > /var/local/data/AA/vehicle",
+        "mount -o remount,ro /"
+      ],
+      "remove_steps": [
+        "mount -o remount,rw /; rm -rf /opt/hmi/data/ro/Plugins/EntryAad /opt/aa; mount -o remount,ro /"
+      ]
     }
   }
 }

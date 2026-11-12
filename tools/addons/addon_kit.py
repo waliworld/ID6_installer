@@ -57,18 +57,36 @@ def _ssh(head, key, remote, timeout=40):
         return 127, "", str(e)
 
 
-def _scp(head, key, local: Path, remote_path: str, recursive=False, timeout=180):
-    cmd = ["scp", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new"]
-    if recursive:
-        cmd += ["-r"]
+def _put(head, key, local: Path, remote: str, timeout=240) -> int:
+    """Stream a local file to the HU over the SSH shell ('cat > remote').
+    Works even when the head unit has no scp (NBT Evo ships without it)."""
+    cmd = ["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new"]
     if key:
         cmd += ["-i", key]
-    cmd += [str(local), f"root@{head}:{remote_path}"]
+    cmd += [f"root@{head}", f"cat > {shlex.quote(remote)}"]
     try:
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-        return p.returncode, p.stdout.strip(), p.stderr.strip()
-    except (subprocess.TimeoutExpired, OSError) as e:
-        return 127, "", str(e)
+        with open(local, "rb") as f:
+            p = subprocess.run(cmd, stdin=f, capture_output=True, timeout=timeout)
+        return p.returncode
+    except (OSError, subprocess.TimeoutExpired):
+        return 127
+
+
+def _upload_tree(head, key, kit: Path, dest: str) -> tuple[bool, str]:
+    """Upload a whole kit folder to dest/<kit.name>, creating dirs, via _put."""
+    base = f"{dest}/{kit.name}"
+    _ssh(head, key, f"rm -rf {shlex.quote(dest)} && mkdir -p {shlex.quote(base)}")
+    for p in sorted(kit.rglob("*")):
+        rel = p.relative_to(kit).as_posix()
+        rpath = f"{base}/{rel}"
+        if p.is_dir():
+            _ssh(head, key, f"mkdir -p {shlex.quote(rpath)}")
+        else:
+            parent = rpath.rsplit("/", 1)[0]
+            _ssh(head, key, f"mkdir -p {shlex.quote(parent)}")
+            if _put(head, key, p, rpath) != 0:
+                return False, rel
+    return True, base
 
 
 def _reach(head, key) -> bool:
@@ -177,18 +195,16 @@ def do_install(a) -> dict:
     for p in m.get("backup_paths", []):
         _ssh(a.head, a.key, f"cp -a {shlex.quote(p)} {shlex.quote(bdir)}/ 2>/dev/null || true")
 
-    # 2) push the kit (whole folder for tree-based add-ons, else listed files)
+    # 2) push the kit over the SSH shell (no scp needed on the HU)
     if m.get("upload") == "dir":
-        _ssh(a.head, a.key, f"rm -rf {stage} && mkdir -p {stage}")
-        rc, _, err = _scp(a.head, a.key, kit, stage, recursive=True)
-        if rc != 0:
-            return {"Ok": False, "Backup": bdir, "Result": f"Upload of kit folder failed ({err}); nothing installed."}
-        stage = f"{stage}/{kit.name}"
+        ok_u, info = _upload_tree(a.head, a.key, kit, stage)
+        if not ok_u:
+            return {"Ok": False, "Backup": bdir, "Result": f"Upload of {info} failed; nothing installed."}
+        stage = info
     else:
         for f in files:
-            rc, _, err = _scp(a.head, a.key, kit / f, f"{stage}/{Path(f).name}")
-            if rc != 0:
-                return {"Ok": False, "Backup": bdir, "Result": f"Upload of {f} failed ({err}); nothing installed."}
+            if _put(a.head, a.key, kit / f, f"{stage}/{Path(f).name}") != 0:
+                return {"Ok": False, "Backup": bdir, "Result": f"Upload of {f} failed; nothing installed."}
 
     # 3) run verified install steps
     ok, log = True, []

@@ -31,28 +31,29 @@ Remove / Status per card (enabled once SSH is on).
 
 ## The add-ons
 
-| id | What | License | Needs |
-|---|---|---|---|
-| `nbt-aad` | **Android Auto** (the base) | PolyForm NC | — |
-| `aa-menu-tile` | AA tile in the main menu | PolyForm NC | `nbt-aad` |
-| `idrive-plus-plugins` | Weather/news/fuel/traffic pages | PolyForm NC | `nbt-aad` |
-| `entrynav2-aa` | Android Auto for EntryNav2 | GPL-3.0 | usb-device.conf |
+| id | What | License | Platform | Needs |
+|---|---|---|---|---|
+| `nbt-aad` | **Android Auto** (the base) | PolyForm NC | NBT Evo | — |
+| `aa-menu-tile` | AA tile in the main menu | PolyForm NC | NBT Evo | `nbt-aad` |
+| `idrive-plus-plugins` | Weather/news/fuel/traffic pages | PolyForm NC | NBT Evo | `nbt-aad` |
+| `entry-aad` | Android Auto for EntryNav2 | PolyForm NC | EntryNav2 | — |
 
-**Android Auto (NBT-AAD) is the foundation** — the tile and iDrive Plus both require it.
-Install `nbt-aad` first.
+**Android Auto (NBT-AAD) is the foundation** on NBT Evo — the tile and iDrive Plus both require
+it (the installer checks `/opt/aa/nbt-aad` is present first). Install `nbt-aad` first. EntryNav2
+uses `entry-aad`, which is self-contained and runs its own `--compat` check before writing.
+
+All four now carry their **published install steps** (transcribed from each project's own install
+guide): NBT-AAD places `/opt/aa/nbt-aad` + the `NbtAad` plugin and installs the `pf_aa` firewall
+rule; `entry-aad` places `/opt/aa` + the `EntryAad` plugin (note it remounts `/`, not
+`/net/hu-omap/fs/sda0` — EntryNav2's layout differs). Kits are streamed to the HU over the SSH
+shell, so no `scp` is required on the unit. **Still test each on a reference car before fleet use.**
 
 ### Staging a kit
-Download the add-on's release (link in each card / `source` in the manifest), unzip it, and
-point the card's **Kit folder** at the unzipped folder. For `aa-menu-tile` the kit is the
-`nbt-aa-tile` release folder (`aa-tile`, `*.sh`, …); for `idrive-plus-plugins` it's the
-`chiavetta` install folder; for `entrynav2-aa` it's `runtime/aa` plus a filled-in
-`usb-device.conf` (your phone's USB port + VID/PID — see that project's README).
-
-### Marked "needs verification"
-`nbt-aad` and `entrynav2-aa` ship here with **no install steps** on purpose — their flows
-need confirming on a reference car (and EntryNav2 needs the per-phone VID/PID). Until you add
-verified `steps` to `addons.json`, Install returns "pending" and writes nothing. `aa-menu-tile`
-and `idrive-plus-plugins` carry their published steps, but still test on a reference car first.
+Download the add-on's release (link in each card / `source` in the manifest), unzip it, and point
+the card's **Kit folder** at the unzipped folder. `nbt-aad`: the folder holding `nbt-aad`, `pf_aa`
+and the extracted `Releases/`. `aa-menu-tile`: the `nbt-aa-tile` release folder. `idrive-plus-plugins`:
+the `chiavetta` install folder. `entry-aad`: the extracted `entry-aad-<version>` folder (with its
+`opt/aa` and `opt/hmi/data/ro/Plugins/EntryAad` trees); edit `/var/local/data/AA/vehicle` for the car.
 
 ## Not part of the SSH flow
 
