@@ -3,11 +3,12 @@ import struct
 import unittest
 from unittest.mock import patch
 
-from capture_headunit import FRAMEWORKS, capture, enet_ip, ssh_read
+from capture_headunit import FRAMEWORKS, JACINTO_FRAMEWORK_DIRS, capture, enet_ip, ssh_read
+
+LIBRARY = b"\x7fELF\x01\x01" + bytes(10) + struct.pack("<HH", 3, 40) + b"example"
 
 
 def mock_head(firmware=b"NBTevo_A20000I", valid_frameworks=True):
-    library = b"\x7fELF\x01\x01" + bytes(10) + struct.pack("<HH", 3, 40) + b"example"
     def read(command, optional=False):
         if command == "cat /opt/sys/etc/nbt_version.txt":
             return firmware
@@ -16,7 +17,26 @@ def mock_head(firmware=b"NBTevo_A20000I", valid_frameworks=True):
         if command.endswith("get screen 0"):
             return b"- resolution: x=1280, y=480\n"
         if command in ("cat /opt/hmi/ID5/lib/" + name for name in FRAMEWORKS):
-            return library if valid_frameworks else b"invalid"
+            return LIBRARY if valid_frameworks else b"invalid"
+        raise AssertionError(command)
+    return read
+
+
+def mock_jacinto(framework_dir=JACINTO_FRAMEWORK_DIRS[0]):
+    """Split-node unit: SSH on the Jacinto, HMI files only over Qnet."""
+    def read(command, optional=False):
+        if command == "cat /etc/nbt_version.txt":
+            return b"NBTevo_P18362I"
+        if command == "uname -a":
+            return b"QNX hu-jacinto 6.5.0 2015/12/01 J5_Evo armle"
+        if command.startswith("on -f hu-omap") and command.endswith('"'):
+            return b"- resolution: x=1280, y=480\n"
+        if command == "on -f hu-omap /sbin/ifconfig":
+            return b"lo0: inet 127.0.0.1\ndwc0: inet 169.254.199.119 netmask 0xffff0000\n"
+        if command in ("cat " + framework_dir + "/" + name for name in FRAMEWORKS):
+            return LIBRARY
+        if optional:  # a wrong Qnet mount point reads empty
+            return b""
         raise AssertionError(command)
     return read
 
@@ -30,6 +50,24 @@ class CaptureTest(unittest.TestCase):
         self.assertNotIn("private-hostname", str(report))
         self.assertEqual(set(files), set(FRAMEWORKS))
         self.assertTrue(all(len(f["sha256"]) == 64 for f in report["frameworks"].values()))
+
+    def test_reports_direct_node_without_leaking_hostname(self):
+        report, _ = capture(mock_head(), None)
+        self.assertEqual(report["ssh_node"], "unknown")
+        self.assertNotIn("private-hostname", str(report))
+
+    def test_split_node_reads_hmi_over_qnet(self):
+        report, files = capture(mock_jacinto(), None)
+        self.assertEqual(report["firmware"], "NBTevo_P18362I")
+        self.assertEqual(report["ssh_node"], "hu-jacinto")
+        self.assertEqual(report["framework_dir"], JACINTO_FRAMEWORK_DIRS[0])
+        self.assertEqual(report["hmi_node_ip"], "169.254.199.119")
+        self.assertEqual(report["display"], {"width": 1280, "height": 480})
+        self.assertEqual(set(files), set(FRAMEWORKS))
+
+    def test_split_node_falls_back_to_other_qnet_mount(self):
+        report, _ = capture(mock_jacinto(framework_dir=JACINTO_FRAMEWORK_DIRS[1]), None)
+        self.assertEqual(report["framework_dir"], JACINTO_FRAMEWORK_DIRS[1])
 
     def test_manual_version_and_invalid_framework(self):
         report, _ = capture(mock_head(b""), "NBTevo_A20000I")

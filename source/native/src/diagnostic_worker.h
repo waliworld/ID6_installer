@@ -1,41 +1,17 @@
 #ifndef DIAGNOSTIC_WORKER_H
 #define DIAGNOSTIC_WORKER_H
 
-#include <arpa/inet.h>
 #include <errno.h>
-#include <stdio.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <sys/socket.h>
 #include <spawn.h>
 #include <string.h>
 #include <unistd.h>
 
-// Read the gateway saved by the desktop installer beside this worker.
-static inline bool installed_gateway(const char* worker, char (&host)[16]) {
-    char path[192];
-    const char* last = strrchr(worker, '/');
-    if (!last) return false;
-    int length = snprintf(path, sizeof path, "%.*s/gateway-ip.txt",
-                          static_cast<int>(last-worker), worker);
-    if (length < 0 || static_cast<size_t>(length) >= sizeof path) return false;
-    FILE* file = fopen(path, "r");
-    if (!file) return false;
-    char line[32];
-    bool valid = fgets(line, sizeof line, file) != NULL && fgetc(file) == EOF;
-    fclose(file);
-    if (!valid) return false;
-    line[strcspn(line, "\r\n")] = 0;
-    struct in_addr address;
-    if (inet_pton(AF_INET, line, &address) != 1 ||
-        (ntohl(address.s_addr) >> 16) != 0xa9feu) return false;
-    strcpy(host, line);
-    return true;
-}
-
 static inline pid_t launch(const char *const *args,int output) {
     pid_t child=-1;
-    char library_path[] = "LD_LIBRARY_PATH=/lib:/usr/lib:/boot/lib";
+    // /opt/sys/lib holds the DSI libraries the workers' MOST fallback opens.
+    char library_path[] = "LD_LIBRARY_PATH=/lib:/usr/lib:/boot/lib:/opt/sys/lib";
     char *environment[] = {library_path, 0};
     int error;
 #ifdef __QNX__

@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plugin>
+  <name>BEAMer</name>
+  <type>App</type>
+  <file>{pluginDir}/BEAMer</file>
+  <config>
+    <autoStart>yes</autoStart>
+    <dependencies>
+      <pluginAppConnector>
+        <type>Etch</type>
+        <id>218</id>
+        <asyncCallbacks>yes</asyncCallbacks>
+      </pluginAppConnector>
+    </dependencies>
+    <parameters>
+      <DescFile>{pluginDir}/BEAMer.xml</DescFile>
+      <ImageDBFile>{pluginDir}/BEAMer_ALL_Images.zip</ImageDBFile>
+    </parameters>
+  </config>
+</plugin>

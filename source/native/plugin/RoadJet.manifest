@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plugin>
+  <name>RoadJet</name>
+  <type>App</type>
+  <file>{pluginDir}/RoadJet</file>
+  <config>
+    <autoStart>yes</autoStart>
+    <dependencies>
+      <pluginAppConnector>
+        <type>Etch</type>
+        <id>217</id>
+        <asyncCallbacks>yes</asyncCallbacks>
+      </pluginAppConnector>
+    </dependencies>
+    <parameters>
+      <DescFile>{pluginDir}/RoadJet.xml</DescFile>
+      <ImageDBFile>{pluginDir}/RoadJet_ALL_Images.zip</ImageDBFile>
+    </parameters>
+  </config>
+</plugin>

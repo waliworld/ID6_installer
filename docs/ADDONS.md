@@ -31,12 +31,34 @@ Remove / Status per card (enabled once SSH is on).
 
 ## The add-ons
 
+### Android Auto & info add-ons
+
 | id | What | License | Platform | Needs |
 |---|---|---|---|---|
 | `nbt-aad` | **Android Auto** (the base) | PolyForm NC | NBT Evo | — |
 | `aa-menu-tile` | AA tile in the main menu | PolyForm NC | NBT Evo | `nbt-aad` |
 | `idrive-plus-plugins` | Weather/news/fuel/traffic pages | PolyForm NC | NBT Evo | `nbt-aad` |
 | `entry-aad` | Android Auto for EntryNav2 | PolyForm NC | EntryNav2 | — |
+
+### ID6Apps packages (vendored in `packages/`)
+
+Upstream publishes the compiled payloads, so these need no external download — unzip the package
+from `packages/` and point the card's **Kit folder** at the unzipped folder. All are NBT Evo and
+require a matched firmware profile (**N18092I / P18362I**, see `source/docs/COMPATIBILITY.md`);
+they install into `/var/opt/hmi/data/ID5/Plugins/` with the target app folders backed up first.
+
+| id | Apps installed | Notes |
+|---|---|---|
+| `apps-dashboard` | BoostDeck, ShiftDeck, MhdMaps, EngineCodes | the core gauge/diagnostic set |
+| `apps-hud-gauges` | HudTest | targets the reference 340i factory HUD |
+| `apps-bootmod3` | Bootmod3Suite | beta; burble presets still need HSFZ |
+| `apps-xdrive` | XDriveControl | experimental; DSC-dependent, needs HSFZ |
+| `apps-road-jet` | RoadJet | needs 1280 × 480 |
+| `apps-beamer` | BEAMer | needs 1280 × 480 |
+
+These install the package's **baked layout**, so the display must match (that's why Road Jet and
+BEAMer are 1280 × 480 only). Upstream's own v0.7.1 installer generates layouts per display; use it
+if you need a size the package doesn't ship.
 
 **Android Auto (NBT-AAD) is the foundation** on NBT Evo — the tile and iDrive Plus both require
 it (the installer checks `/opt/aa/nbt-aad` is present first). Install `nbt-aad` first. EntryNav2

@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plugin>
+  <name>XDriveControl</name>
+  <type>App</type>
+  <file>{pluginDir}/XDriveControl</file>
+  <config>
+    <autoStart>yes</autoStart>
+    <dependencies>
+      <pluginAppConnector>
+        <type>Etch</type>
+        <id>112</id>
+        <asyncCallbacks>yes</asyncCallbacks>
+      </pluginAppConnector>
+    </dependencies>
+    <parameters>
+      <DescFile>{pluginDir}/XDriveControl.xml</DescFile>
+    </parameters>
+  </config>
+</plugin>

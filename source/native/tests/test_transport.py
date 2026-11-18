@@ -1,5 +1,7 @@
 """Exercise the real C collector against a loopback HSFZ gateway; no car needed."""
+import os
 import re
+import signal
 import socket
 import struct
 import subprocess
@@ -34,7 +36,7 @@ def exact(conn, n):
 
 
 class TransportTest(unittest.TestCase):
-    def run_collector(self, mode="normal", extra=(), cycles=1):
+    def run_collector(self, mode="normal", extra=(), cycles=1, env=None):
         udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         udp.bind(("127.0.0.1", 0))
         udp.settimeout(4)
@@ -104,7 +106,7 @@ class TransportTest(unittest.TestCase):
         try:
             result = subprocess.run([BIN, "--host", "127.0.0.1", "--port", str(server.getsockname()[1]),
                                      "--udp-port", str(udp.getsockname()[1]), "--cycles", str(cycles), *extra],
-                                    capture_output=True, text=True, timeout=10)
+                                    capture_output=True, text=True, timeout=10, env=env)
             self.assertEqual(result.returncode, 0, result.stderr)
             packets = [udp.recv(512).decode().split() for _ in range(cycles)]
             packet = packets[-1]
@@ -191,6 +193,155 @@ class TransportTest(unittest.TestCase):
         self.assertEqual(int(p[3]), 239)
         self.assertEqual(len(requests), 8)
         self.assertTrue(all(r[1] == 0x12 for r in requests))
+
+    def run_most(self, args, fake="up", cycles=12):
+        """Run with the in-process fake DSI; return every packet, the exit status and stderr."""
+        env = dict(os.environ)
+        env.pop("ID6_FAKE_MOST", None)
+        if fake:
+            env["ID6_FAKE_MOST"] = fake
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
+            udp.bind(("127.0.0.1", 0))
+            udp.settimeout(.5)
+            r = subprocess.run([BIN, *args, "--udp-port", str(udp.getsockname()[1]), "--cycles", str(cycles)],
+                               capture_output=True, text=True, timeout=20, env=env)
+            packets = []
+            try:
+                while True:
+                    packets.append(udp.recv(512).decode().split())
+            except socket.timeout:
+                pass
+        return packets, r.returncode, r.stderr
+
+    @staticmethod
+    def closed_port():
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("127.0.0.1", 0))
+            return s.getsockname()[1]
+
+    def assert_most_values(self, p):
+        self.assertEqual(int(p[3]), 239)  # every gauge but the EGS transmission temperature
+        self.assertAlmostEqual(float(p[7]), 4174*16/65535*14.7, places=5)
+        self.assertAlmostEqual(float(p[9]), 7.8)
+        self.assertAlmostEqual(float(p[11]), 49.5)
+        self.assertAlmostEqual(float(p[15]), 89.14)
+        self.assertAlmostEqual(float(p[19]), 33.25)
+
+    def test_unreachable_gateway_switches_to_most(self):
+        packets, rc, err = self.run_most(["--host", "127.0.0.1", "--port", str(self.closed_port())])
+        self.assertEqual(rc, 0, err)
+        self.assertEqual([int(p[3]) for p in packets[:4]], [0]*4)  # the fifth failed connect opens MOST
+        self.assertIn("transport: MOST", err)
+        self.assert_most_values(packets[-1])
+        self.assertIn("FAKE-MOST exit unregister_target=1 unregister_client=1 free=1", err)
+
+    def test_failed_most_open_is_closed_and_hsfz_retried(self):
+        start = time.monotonic()
+        packets, rc, err = self.run_most(["--host", "127.0.0.1", "--port", str(self.closed_port())],
+                                         fake="no-server", cycles=12)
+        self.assertEqual(rc, 0, err)
+        self.assertLess(time.monotonic()-start, 8)
+        self.assertIn("MOST open failed: no server", err)
+        self.assertEqual(err.count("MOST open failed"), 1)  # backed off, not retried every tick
+        self.assertIn("free=1", err)  # the failed open's DSI client was freed
+        self.assertTrue(all(int(p[3]) == 0 for p in packets))
+
+    def test_missing_gateway_file_uses_most(self):
+        packets, rc, err = self.run_most(["--trace"], cycles=3)
+        self.assertEqual(rc, 0, err)
+        self.assert_most_values(packets[-1])
+        self.assertNotIn("did=DA12", err)
+        self.assertIn("ecu=12 did=4205 payload=31E5", err)
+
+    def test_boostdeck_skips_egs_on_most(self):
+        packets, rc, err = self.run_most(["--transport", "most", "--trace"], cycles=4)
+        self.assertEqual(rc, 0, err)
+        self.assertNotIn("did=DA12", err)
+        self.assertNotIn("ecu=18", err)
+        self.assertTrue(all(int(p[3]) & (1 << 4) == 0 for p in packets))  # transmission temperature invalid
+        self.assertEqual(int(packets[-1][3]), 239)
+
+    def test_working_gateway_never_touches_most(self):
+        env = dict(os.environ, ID6_FAKE_MOST="up")
+        p, requests, err = self.run_collector(cycles=3, env=env)
+        self.assertEqual(int(p[3]), 255)
+        self.assertNotIn("FAKE-MOST", err)
+        _, rc, err = self.run_most(["--transport", "hsfz", "--host", "127.0.0.1",
+                                    "--port", str(self.closed_port())], cycles=10)
+        self.assertEqual(rc, 0, err)
+        self.assertNotIn("FAKE-MOST", err)
+
+    def test_missing_dsi_library_keeps_emitting_no_data(self):
+        packets, rc, err = self.run_most(["--transport", "most"], fake=None, cycles=4)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(packets), 4)
+        self.assertTrue(all(int(p[3]) == 0 for p in packets))
+        self.assertIn("MOST open failed: no library", err)
+        self.assertEqual(err.count("FAKE-MOST bind"), 1)  # not retried every tick
+
+    def test_lost_most_link_exits_for_a_fresh_worker(self):
+        packets, rc, err = self.run_most(["--transport", "most"], fake="drop", cycles=50)
+        self.assertEqual(rc, 1, err)
+        self.assertLess(len(packets), 50)
+
+    def test_busy_tunnel_keeps_fresh_values(self):
+        """A read skipped for a busy lease leaves a still-fresh gauge shown."""
+        env = dict(os.environ, ID6_FAKE_MOST="up")
+        env.pop("ID6_FAKE_MOST_DELAY_MS", None)
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
+            udp.bind(("127.0.0.1", 0))
+            udp.settimeout(1)
+            proc = subprocess.Popen([BIN, "--transport", "most", "--udp-port", str(udp.getsockname()[1]),
+                                     "--cycles", "30"], stderr=subprocess.DEVNULL, env=env)
+            masks, held = [], False
+            try:
+                while proc.poll() is None or len(masks) < 30:
+                    try:
+                        mask = int(udp.recv(512).decode().split()[3])
+                    except socket.timeout:
+                        break
+                    masks.append(mask)
+                    if mask == 239 and not held:
+                        held = True
+                        lock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                        lock.bind(("127.0.0.1", 42861))
+                        threading.Timer(1.0, lock.close).start()
+            finally:
+                if proc.poll() is None:
+                    proc.kill()
+                proc.wait()
+        self.assertTrue(held, masks)
+        shown = masks[masks.index(239):]
+        # Boost needs a fresh ambient read too, so only the other MOST gauges are checked.
+        self.assertTrue(all(m & 238 == 238 for m in shown), shown)
+
+    def test_hsfz_needs_host(self):
+        r = subprocess.run([BIN, "--transport", "hsfz"], capture_output=True)
+        self.assertEqual(r.returncode, 2)
+
+    def test_sigterm_closes_most_session(self):
+        env = dict(os.environ, ID6_FAKE_MOST="up")
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
+            udp.bind(("127.0.0.1", 0))
+            udp.settimeout(3)
+            proc = subprocess.Popen([BIN, "--session", "--udp-port", str(udp.getsockname()[1])],
+                                    stderr=subprocess.PIPE, text=True, env=env)
+            try:
+                deadline = time.monotonic() + 3
+                while time.monotonic() < deadline:
+                    if int(udp.recv(512).decode().split()[3]) == 239:
+                        break
+                else:
+                    self.fail("no MOST values")
+                start = time.monotonic()
+                proc.send_signal(signal.SIGTERM)
+                self.assertEqual(proc.wait(5), 0)
+                self.assertLess(time.monotonic()-start, 3)
+            finally:
+                if proc.poll() is None:
+                    proc.kill()
+                _, err = proc.communicate()
+        self.assertIn("FAKE-MOST exit unregister_target=1 unregister_client=1 free=1", err)
 
     def test_demo_never_uses_vehicle(self):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:

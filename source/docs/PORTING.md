@@ -8,6 +8,20 @@ Record chassis, model year, engine family, DME and EGS identifiers if available,
 
 For an HMI port, use the [build guide](BUILD.md) to check both framework fingerprints and display geometry. A working menu and a responsive tachometer or speed readout are useful control observations, but they do not validate a particular DME identifier.
 
+### Split-node units
+
+NBT Evo is a two-processor unit: the Jacinto (`hu-jacinto`) talks to ENET, and the OMAP (`hu-omap`) runs the HMI. On some cars the SSH unlock lands on the Jacinto instead of the OMAP. Confirm with `uname -a`: `hu-jacinto` means split-node. On that node `/opt/hmi/ID5/lib` and `/opt/sys/etc` are empty or absent.
+
+Read the HMI side read-only over Qnet from the Jacinto:
+
+- Firmware code: `cat /etc/nbt_version.txt` (the Jacinto's own copy), or `on -f hu-omap cat /opt/sys/etc/nbt_version.txt`.
+- Framework libraries and HMI version: under `/net/hu-omap/fs/sda0/...`. The OMAP's mount point varies: look under both `/net/hu-omap/fs/sda0/repository/istep/opt/hmi/ID5/lib` and `/net/hu-omap/fs/sda0/opt/hmi/ID5/lib`.
+- OMAP commands (e.g. the display query): `on -f hu-omap sh -c "export LD_LIBRARY_PATH=/opt/sys/lib:/usr/lib:/lib; /opt/sys/bin/LayerManagerControl get screen 0"`.
+
+The OMAP has its own ENET address (separate from the Jacinto's SSH address) and may be reachable directly; the gateway's head-unit lookup returns the Jacinto address. Read the OMAP address from the Jacinto with `on -f hu-omap /sbin/ifconfig` (the `169.254.x.x` entry on its HMI NIC). The [capture utility](../tools/capture_headunit.py) detects the Jacinto, picks the Qnet paths, and records `ssh_node`, `hmi_node_ip`, and `framework_dir` in its report.
+
+Installing matters here too: the plugin directory `/var/opt/hmi/data/ID5/Plugins` lives on the OMAP. On a split-node unit, stage the app folders either over SSH to the OMAP's own address (`hmi_node_ip`) or over the Qnet write path from the Jacinto (`/var` resolves under `/net/hu-omap/fs/sda1/...`). The Jacinto's own filesystem is not the HMI.
+
 ## 2. Capture a few explicit reads
 
 Exit BoostDeck and ShiftDeck and close other diagnostic clients so the probe has the gateway to itself. Start with RPM, standard OBD coolant, and the existing BMW coolant and oil-pressure candidates. Replace the example IPs with the detected IPs. This probe works with Python 3 on macOS or Windows and does not require head-unit SSH.

@@ -3,11 +3,15 @@
 Instruction-prefix comparisons stop before the first in-function PC-relative
 literal pool. They do not compare the pool's relocated addresses or its strings.
 Reports contain hashes and symbol identities, never library payload bytes.
+
+The reference is either a private framework pair (--reference-dir) or a
+fingerprint of one (--fingerprint). A fingerprint holds symbol names, sizes,
+relocation slots and SHA-256 digests, so it can be shared without the libraries.
+Write one with --reference-dir and --emit-fingerprint.
 """
 import argparse
 import hashlib
 import json
-import struct
 from pathlib import Path
 
 from capstone import Cs, CS_ARCH_ARM, CS_MODE_ARM
@@ -55,62 +59,133 @@ def prefix(symbol):
     return data[:stop]
 
 
+LIBRARIES = ('libAppFramework.A.so', 'libCoreFramework.A.so')
+VTABLES = ('_ZTVN3bmw9PluginAppE', '_ZTVN3bmw8RunnableE')
+
+
+def sha(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def constructor(name):
+    return 'PluginAppC1E' in name or 'PluginAppC2E' in name
+
+
+def fingerprint(directory, imports):
+    frameworks = {}
+    for name in LIBRARIES:
+        path = directory / name
+        symbols, relocations, comment = inventory(path)
+        frameworks[name] = {
+            'sha256': sha(path.read_bytes()), 'compiler_comment': comment,
+            'functions': {n: {'bytes': len(s['data']), 'prefix_sha256': sha(prefix(s))}
+                          for n, s in sorted(symbols.items())
+                          if s['type'] == 'STT_FUNC' and (n in imports or constructor(n))},
+            'objects': {n: {'bytes': len(s['data']), 'type': s['type']}
+                        for n, s in sorted(symbols.items())
+                        if n in imports and s['type'] != 'STT_FUNC'},
+            'vtables': {n: {'bytes': len(symbols[n]['data']), 'sha256': sha(symbols[n]['data']),
+                            'relocations': [relocations.get(symbols[n]['address'] + offset)
+                                            for offset in range(0, len(symbols[n]['data']), 4)]}
+                        for n in VTABLES if n in symbols}}
+    return frameworks
+
+
+def reference_gaps(reference, imports):
+    covered = set().union(*(lib['functions'].keys() | lib['objects'].keys()
+                            for lib in reference.values()))
+    vtables = set().union(*(lib['vtables'].keys() for lib in reference.values()))
+    return ([f'{name}: missing from reference' for name in sorted(imports - covered)]
+            + [f'{name}: missing vtable in reference' for name in VTABLES if name not in vtables])
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--reference-dir', type=Path, required=True)
-    p.add_argument('--installed-dir', type=Path, required=True)
-    p.add_argument('--plugin', type=Path, required=True)
-    p.add_argument('--report', type=Path, required=True)
+    source = p.add_mutually_exclusive_group(required=True)
+    source.add_argument('--reference-dir', type=Path)
+    source.add_argument('--fingerprint', type=Path, help='fingerprint JSON to use as the reference')
+    p.add_argument('--emit-fingerprint', type=Path, help='write the fingerprint of --reference-dir and exit')
+    p.add_argument('--label', help='name of the reference firmware, stored in the fingerprint')
+    p.add_argument('--installed-dir', type=Path)
+    p.add_argument('--plugin', type=Path, required=True, nargs='+')
+    p.add_argument('--report', type=Path)
     a = p.parse_args()
-    with a.plugin.open('rb') as f:
-        imports = {s.name for s in ELFFile(f).get_section_by_name('.dynsym').iter_symbols()
-                   if s['st_shndx'] == 'SHN_UNDEF' and 'bmw' in s.name}
+    imports = set()
+    for plugin in a.plugin:
+        with plugin.open('rb') as f:
+            imports |= {s.name for s in ELFFile(f).get_section_by_name('.dynsym').iter_symbols()
+                        if s['st_shndx'] == 'SHN_UNDEF' and 'bmw' in s.name}
+    if a.emit_fingerprint:
+        assert a.reference_dir, '--emit-fingerprint needs --reference-dir'
+        reference = fingerprint(a.reference_dir, imports)
+        gaps = reference_gaps(reference, imports)
+        if gaps:
+            p.error('; '.join(gaps))
+        a.emit_fingerprint.write_text(json.dumps({
+            'format': 2, 'reference': a.label, 'plugins': sorted(x.name for x in a.plugin),
+            'frameworks': reference}, indent=1) + '\n')
+        print('Fingerprint written:', a.emit_fingerprint)
+        return
+    assert a.installed_dir and a.report, '--installed-dir and --report are required'
+    if a.fingerprint:
+        stored = json.loads(a.fingerprint.read_text())
+        if stored['format'] != 2:
+            p.error('Expected fingerprint format 2. Regenerate the fingerprint.')
+        reference = stored['frameworks']
+    else:
+        reference = fingerprint(a.reference_dir, imports)
     report = {'method': 'Offline ELF bytes, relocation tables and Capstone ARM instruction-prefix boundaries',
-              'native_execution': False, 'frameworks': [], 'failures': [],
+              'native_execution': False, 'frameworks': [], 'failures': reference_gaps(reference, imports),
               'limitations': ['Literal pools, runtime values and transitive callees are not semantically compared.',
                               'This comparison does not prove the reconstructed reference SDK correct.',
                               'Compiler behavior, HMI integration and lifecycle still require parked target tests.']}
-    for name in ('libAppFramework.A.so', 'libCoreFramework.A.so'):
-        rp, ip = a.reference_dir / name, a.installed_dir / name
-        ref, rr, rc = inventory(rp)
+    for name in LIBRARIES:
+        ip, ref = a.installed_dir / name, reference[name]
         car, cr, cc = inventory(ip)
-        entry = {'name': name, 'reference_sha256': hashlib.sha256(rp.read_bytes()).hexdigest(),
-                 'installed_sha256': hashlib.sha256(ip.read_bytes()).hexdigest(),
-                 'installed_compiler_comment': cc, 'reference_compiler_comment': rc,
+        entry = {'name': name, 'reference_sha256': ref['sha256'],
+                 'installed_sha256': sha(ip.read_bytes()),
+                 'installed_compiler_comment': cc, 'reference_compiler_comment': ref['compiler_comment'],
                  'function_comparisons': [], 'vtables': []}
-        selected = imports | {n for n in car if 'PluginAppC1E' in n or 'PluginAppC2E' in n}
-        for n in sorted(selected):
-            if n not in ref or n not in car or car[n]['type'] != 'STT_FUNC':
+        for n, expected in ref['objects'].items():
+            if n not in imports:
                 continue
-            rb, cb = prefix(ref[n]), prefix(car[n])
-            same = rb == cb and len(ref[n]['data']) == len(car[n]['data'])
+            symbol = car.get(n)
+            if symbol is None or symbol['type'] != expected['type'] or len(symbol['data']) != expected['bytes']:
+                report['failures'].append(f'{name}: {n} missing or changed object type or size')
+        for n, expected in ref['functions'].items():
+            if n not in imports and not constructor(n):
+                continue
+            if n not in car or car[n]['type'] != 'STT_FUNC':
+                report['failures'].append(f'{name}: missing function {n}')
+                continue
+            cb = prefix(car[n])
+            same = sha(cb) == expected['prefix_sha256'] and len(car[n]['data']) == expected['bytes']
             entry['function_comparisons'].append({'symbol': n, 'installed_address': hex(car[n]['address']),
                 'function_bytes': len(car[n]['data']), 'instruction_prefix_bytes': len(cb),
-                'instruction_prefix_sha256': hashlib.sha256(cb).hexdigest(), 'same_size_and_prefix': same})
+                'instruction_prefix_sha256': sha(cb), 'same_size_and_prefix': same})
             if not same:
                 report['failures'].append(n + ': size/instruction prefix differs')
-        for n in ('_ZTVN3bmw9PluginAppE', '_ZTVN3bmw8RunnableE'):
-            if n not in ref or n not in car:
+        for n, expected in ref['vtables'].items():
+            if n not in car:
+                report['failures'].append(f'{name}: missing vtable {n}')
                 continue
-            rs, cs = ref[n], car[n]
+            cs = car[n]
             slots = []
-            for offset in range(0, len(rs['data']), 4):
-                left, right = rr.get(rs['address'] + offset), cr.get(cs['address'] + offset)
-                slots.append({'byte_offset': offset, 'relocation': right,
-                              'equal': left == right and rs['data'][offset:offset+4] == cs['data'][offset:offset+4]})
-            same = len(rs['data']) == len(cs['data']) and all(s['equal'] for s in slots)
+            for index, left in enumerate(expected['relocations']):
+                right = cr.get(cs['address'] + index * 4)
+                slots.append({'byte_offset': index * 4, 'relocation': right, 'equal': left == right})
+            same = (len(cs['data']) == expected['bytes'] and sha(cs['data']) == expected['sha256']
+                    and all(s['equal'] for s in slots))
             entry['vtables'].append({'symbol': n, 'same_bytes_and_relocation_slots': same, 'slots': slots})
             if not same:
                 report['failures'].append(n + ': vtable differs')
         report['frameworks'].append(entry)
     comparisons = sum(len(x['function_comparisons']) for x in report['frameworks'])
-    assert comparisons >= 35, 'Incomplete framework function coverage'
-    assert any(v['symbol'] == '_ZTVN3bmw9PluginAppE'
-               for x in report['frameworks'] for v in x['vtables']), 'Missing PluginApp vtable'
     report['compared_functions'] = comparisons
     report['static_comparison_passed'] = not report['failures']
     a.report.write_text(json.dumps(report, indent=2) + '\n')
-    assert not report['failures'], report['failures']
+    if report['failures']:
+        raise SystemExit('Framework comparison failed:\n' + '\n'.join(report['failures']))
     print('Framework comparison passed:', comparisons, 'function prefixes and PluginApp vtable; no target execution.')
 
 

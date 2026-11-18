@@ -49,7 +49,12 @@ int bd_encode(const bd_frame *f, char *out, size_t len) {
     size_t used;
     unsigned i;
     if (!f || !out || !len) return -1;
-    n = snprintf(out, len, "NBG3 %lu %u %u %llu",
+    #ifdef PERF_LAB
+    const char *version = "NBG4";
+#else
+    const char *version = "NBG3";
+#endif
+    n = snprintf(out, len, "%s %lu %u %u %llu", version,
                  (unsigned long)f->seq, f->demo, f->valid,
                  (unsigned long long)f->sent_ms);
     if (n < 0 || (size_t)n >= len) return -1;
@@ -95,7 +100,11 @@ int bd_parse(const char *data, size_t len, bd_frame *out) {
     memcpy(b, data, len); b[len] = 0;
     memset(&f, 0, sizeof f);
     if (len<5 || !isspace((unsigned char)b[4])) return 0;
-    if (!memcmp(b,"NBG3",4)) fields=BD_COUNT;
+    #ifdef PERF_LAB
+    if (!memcmp(b,"NBG4",4)) fields=BD_COUNT;
+    else
+#endif
+    if (!memcmp(b,"NBG3",4)) fields=8;
     else if (!memcmp(b,"NBG2",4)) fields=5;
     else return 0;
     cursor=b+4;
@@ -119,6 +128,9 @@ int bd_parse(const char *data, size_t len, bd_frame *out) {
 int bd_is_fresh(const bd_frame *f, unsigned i, uint64_t elapsed) {
     unsigned limit = i==BD_IAT || i==BD_TRANS || i==BD_COOLANT ? BD_TEMP_STALE_MS
                    : BD_STALE_MS;
+    #ifdef PERF_LAB
+    if (i == BD_ETHANOL) limit = 6500;
+#endif
     return i < BD_COUNT && (f->valid & (1u << i)) &&
         elapsed < limit && f->age_ms[i] < limit - elapsed;
 }
@@ -133,6 +145,9 @@ const char *bd_unit(unsigned i, int metric) {
     if (i == BD_BOOST || i == BD_RAIL || i == BD_OIL) return metric ? "bar" : "psi";
     if (i == BD_AFR) return "AFR (gas eq.)";
     if (i == BD_TIMING) return "deg BTDC (cyl 1)";
+#ifdef PERF_LAB
+    if (i == BD_ETHANOL) return "%";
+#endif
     return metric ? "C" : "F";
 }
 int bd_bar(unsigned i, double x) {
@@ -140,6 +155,9 @@ int bd_bar(unsigned i, double x) {
     static const double hi[BD_COUNT] = {45, 25, 50, 100, 160, 300, 8, 130};
     double y;
     if (i >= BD_COUNT || !isfinite(x)) return 0;
+#ifdef PERF_LAB
+    if (i == BD_ETHANOL) return x < 0 ? 0 : x >= 100 ? 1000 : (int)(x * 10 + .5);
+#endif
     y = (x - lo[i]) * 1000 / (hi[i] - lo[i]);
     if (y < 0) y = 0;
     if (y > 1000) y = 1000;

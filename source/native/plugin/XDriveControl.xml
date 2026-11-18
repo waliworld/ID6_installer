@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="216" text="xDrive Control (experimental)">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="100" />
+      <hmiAction id="11" target="101" />
+      <hmiAction id="12" target="102" />
+      <raAction id="21" />
+      <raAction id="22" />
+      <raAction id="23" />
+    </actions>
+    <models>
+      <raDataModel id="50" modelType="Richtext" />
+    </models>
+    <hmiStates>
+      <hmiState id="100" text="xDrive Control (experimental)">
+        <components>
+          <button id="200" text="Read transfer case mode" action="21" />
+          <button id="201" text="Request rear-wheel drive" action="11" />
+          <button id="202" text="Restore all-wheel drive" action="12" />
+          <label id="203" model="50" />
+        </components>
+      </hmiState>
+      <hmiState id="101" parentId="100" text="Confirm rear-wheel drive">
+        <components>
+          <label id="204" text="Ignition on, engine off, in Park. Set the parking brake." />
+          <button id="205" action="22" text="Confirm rear-wheel drive" />
+          <label id="206" model="50" />
+        </components>
+      </hmiState>
+      <hmiState id="102" parentId="100" text="Confirm all-wheel drive">
+        <components>
+          <label id="207" text="Ignition on, engine off, in Park. Set the parking brake." />
+          <button id="208" action="23" text="Confirm all-wheel drive" />
+          <label id="209" model="50" />
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>
