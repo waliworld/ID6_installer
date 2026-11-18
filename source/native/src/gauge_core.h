@@ -5,7 +5,11 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-enum { BD_BOOST, BD_AFR, BD_TIMING, BD_IAT, BD_TRANS, BD_RAIL, BD_OIL, BD_COOLANT, BD_COUNT };
+enum { BD_BOOST, BD_AFR, BD_TIMING, BD_IAT, BD_TRANS, BD_RAIL, BD_OIL, BD_COOLANT,
+#ifdef PERF_LAB
+       BD_ETHANOL,
+#endif
+       BD_COUNT };
 enum { BD_MAX_PACKET = 512, BD_STALE_MS = 2500, BD_TEMP_STALE_MS = 3500,
        BD_UDP_PORT = 42860 };
 typedef struct {

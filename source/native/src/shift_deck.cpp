@@ -1,5 +1,6 @@
 #include "plugin_factory.h"
 #include "diagnostic_worker.h"
+#include "diagnostic_gateway.h"
 #include "drive_frame.h"
 #include "gauge_core.h"
 #include "shift_assets.h"
@@ -11,6 +12,10 @@
 namespace {
 const unsigned kShiftPoll=0x53484654u;
 const char kShiftWorker[]="/var/opt/hmi/data/ID5/Plugins/ShiftDeck/shift-deck-qnx";
+#ifdef NATIVE_SHIFT_SMOOTH
+const unsigned kSweepSteps=128, kSweepBase=56400, kSweepAlert=56529;
+const unsigned kEaseMs=50;
+#endif
 }
 
 class ShiftDeck : public bmw::PluginApp {
@@ -24,6 +29,16 @@ class ShiftDeck : public bmw::PluginApp {
     unsigned bar_, lights_;
     int rpm_,kph_;
     bool shift_;
+#ifdef NATIVE_SHIFT_SMOOTH
+    bool metric_;
+    double rpm_from_;
+    uint64_t rpm_started_;
+    double animatedRpm(uint64_t now) const {
+        if (!rpm_started_ || now-rpm_started_>=kEaseMs) return frame_.rpm;
+        const double remaining=1.-static_cast<double>(now-rpm_started_)/kEaseMs;
+        return frame_.rpm+(rpm_from_-frame_.rpm)*remaining*remaining;
+    }
+#endif
 
     void label(unsigned id,const char* value) { updateModel(id,bmw::BasicString<char>(value)); }
     void reap() {
@@ -45,7 +60,7 @@ class ShiftDeck : public bmw::PluginApp {
         bmw::Parcel data;
         data.writeUInt32(kShiftPoll);
         data.writeUInt32(generation_);
-        post(bmw::Message(0x40000003u,data),visible_ ? 40u : 150u);
+        post(bmw::Message(0x40000003u,data),visible_ ? 16u : 150u);
     }
     void digits(unsigned model, unsigned width, const char* text, unsigned base, bool center) {
         unsigned length=static_cast<unsigned>(strlen(text));
@@ -62,9 +77,17 @@ class ShiftDeck : public bmw::PluginApp {
         int kph=live ? frame_.kph : -1;
         int target=static_cast<int>(kShiftTargets[target_]);
         bool shift=rpm>=target;
+        int displayed_rpm=rpm;
+#ifdef NATIVE_SHIFT_SMOOTH
+        if (rpm>=0) displayed_rpm=static_cast<int>(animatedRpm(now)+.5);
+        unsigned bars=displayed_rpm>0 ? (displayed_rpm*kSweepSteps+4000)/8000 : 0;
+        if (bars>kSweepSteps) bars=kSweepSteps;
+        unsigned image=(shift ? kSweepAlert : kSweepBase)+bars;
+#else
         unsigned bars=rpm>0 ? static_cast<unsigned>(rpm+125)/250 : 0;
         if (bars>32) bars=32;
         unsigned image=(shift ? kBarWarn : kBarBase)+bars;
+#endif
         if (image!=bar_) {
             updateModel(54u,bmw::ImageID(image));
             bar_=image;
@@ -76,7 +99,6 @@ class ShiftDeck : public bmw::PluginApp {
             lights_=lights;
         }
         char text[48];
-        int displayed_rpm=rpm<0 ? -1 : (rpm+5)/10*10;
         if (displayed_rpm!=rpm_ || shift!=shift_) {
             if (displayed_rpm<0) strcpy(text,"--");
             else snprintf(text,sizeof text,"%d",displayed_rpm>9999 ? 9999 : displayed_rpm);
@@ -85,7 +107,13 @@ class ShiftDeck : public bmw::PluginApp {
         }
         if (kph!=kph_) {
             if (kph<0) strcpy(text,"--");
-            else snprintf(text,sizeof text,"%d",(kph*621371+500000)/1000000);
+            else {
+            int speed=(kph*621371+500000)/1000000;
+#ifdef NATIVE_SHIFT_SMOOTH
+            if (metric_) speed=kph;
+#endif
+            snprintf(text,sizeof text,"%d",speed);
+        }
             digits(70u,3u,text,kDigitBase,false);
             kph_=kph;
         }
@@ -99,6 +127,9 @@ class ShiftDeck : public bmw::PluginApp {
         if (!event.readBool(show) || show==visible_) return true;
         visible_=show;
         frame_.sampled_ms=0;
+#ifdef NATIVE_SHIFT_SMOOTH
+        rpm_started_=0;
+#endif
         if (show) retry_at_=0;
         else stopChild();
         draw(bd_mono_ms());
@@ -110,6 +141,15 @@ class ShiftDeck : public bmw::PluginApp {
         draw(bd_mono_ms());
         return true;
     }
+#ifdef NATIVE_SHIFT_SMOOTH
+    template <bool Metric> bool setUnits(const bmw::Parcel&) {
+        metric_=Metric;
+        kph_=-2;
+        updateModel(64u,bmw::ImageID(metric_ ? 56660u : 55916u));
+        draw(bd_mono_ms());
+        return true;
+    }
+#endif
     void showTarget() {
         char text[48];
         snprintf(text,sizeof text,"Shift light at %u RPM",kShiftTargets[target_]);
@@ -125,6 +165,11 @@ public:
           visible_(false),target_(kDefaultTarget),retry_at_(0),bar_(0),lights_(0),
           rpm_(-2),kph_(-2),shift_(false) {
         memset(&frame_,0,sizeof frame_);
+#ifdef NATIVE_SHIFT_SMOOTH
+        metric_=false;
+        rpm_from_=0;
+        rpm_started_=0;
+#endif
     }
     virtual ~ShiftDeck() { shutdown(); }
     virtual bool onFinalize() { shutdown(); return true; }
@@ -163,6 +208,13 @@ public:
         addHandler(44u,action);
         action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setTarget<4> >;
         addHandler(45u,action);
+#ifdef NATIVE_SHIFT_SMOOTH
+        action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setUnits<false> >;
+        addHandler(46u,action);
+        action.m_exec=&Action::execImpl<ShiftDeck,&ShiftDeck::setUnits<true> >;
+        addHandler(47u,action);
+        updateModel(64u,bmw::ImageID(metric_ ? 56660u : 55916u));
+#endif
         updateModel(57u,bmw::ImageID(kShiftOff));
         showTarget();
         draw(bd_mono_ms());
@@ -177,11 +229,9 @@ public:
         reap();
         uint64_t now=bd_mono_ms();
         if (visible_ && child_<=0 && now>=retry_at_) {
-            char host[16];
-            if (installed_gateway(kShiftWorker,host)) {
-                const char* args[]={kShiftWorker,"--host",host,0};
-                child_=launch(args,-1);
-            }
+            const DiagnosticGateway gateway("/var/opt/hmi/data/ID5/Plugins/" "ShiftDeck" "/gateway-ip.txt");
+            const char* args[]={kShiftWorker,"--host",gateway.host(),0};
+            child_=launch(args,-1);
             retry_at_=now+1000;
         }
         for (unsigned i=0;i<8;++i) {
@@ -190,7 +240,17 @@ public:
             if (n<=0) break;
             if (n==sizeof next && visible_ && next.sampled_ms>=frame_.sampled_ms &&
                 next.sampled_ms<=now && next.rpm>=-1 && next.rpm<=16383 &&
-                next.kph>=-1 && next.kph<=255) frame_=next;
+                next.kph>=-1 && next.kph<=255) {
+#ifdef NATIVE_SHIFT_SMOOTH
+                if (next.rpm!=frame_.rpm) {
+                    const bool continuous=next.rpm>=0 && frame_.rpm>=0 && frame_.sampled_ms &&
+                                          now-frame_.sampled_ms<DRIVE_STALE_MS;
+                    rpm_from_=continuous ? animatedRpm(now) : next.rpm;
+                    rpm_started_=continuous ? now : 0;
+                }
+#endif
+                frame_=next;
+            }
         }
         draw(now);
         postPoll();

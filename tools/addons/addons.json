@@ -1,6 +1,5 @@
 {
   "__doc__": "Add-on registry for the TBW toolbox. Each add-on installs over root SSH from a *kit* folder you stage from that project's own release (no third-party binaries are shipped here). Steps are remote shell commands; {stage} = uploaded kit on the HU, {backup} = on-device backup dir. The installer identifies the connected unit and refuses a platform mismatch, and runs each add-on's 'verify' prerequisite, before writing anything. Steps are transcribed from each project's published install guide; confirm on a reference car. Credits/licenses: ../../NOTICES.md.",
-
   "addons": {
     "nbt-aad": {
       "name": "Android Auto (NBT-AAD)",
@@ -11,8 +10,14 @@
       "source": "https://github.com/Sq00ky/Supra-iDrive6-Android-Auto/releases",
       "requires": [],
       "upload": "dir",
-      "files": ["nbt-aad", "pf_aa", "Releases"],
-      "backup_paths": ["/opt/hmi/ID5/data/ro/Plugins/NbtAad"],
+      "files": [
+        "nbt-aad",
+        "pf_aa",
+        "Releases"
+      ],
+      "backup_paths": [
+        "/opt/hmi/ID5/data/ro/Plugins/NbtAad"
+      ],
       "remount": "mount -o remount rw /net/hu-omap/fs/sda0 2>/dev/null; true",
       "steps": [
         "mount -o remount rw /net/hu-omap/fs/sda0",
@@ -25,7 +30,6 @@
         "mount -o remount rw /net/hu-omap/fs/sda0; /dev/shmem/pf_aa --uninstall 2>/dev/null || true; rm -rf /opt/hmi/ID5/data/ro/Plugins/NbtAad /opt/aa/nbt-aad"
       ]
     },
-
     "aa-menu-tile": {
       "name": "Android Auto main-menu tile",
       "desc": "Standalone tile that reuses the CarLife entry so Android Auto shows on the home screen; press brings AA to the front. ~14KB, boot-started.",
@@ -33,12 +37,24 @@
       "license": "PolyForm Noncommercial 1.0.0",
       "credit": "deathwalker80 - nbt-aa-tile; mechanism by RRudkinp; NBT-AAD by Sq00ky",
       "source": "https://github.com/deathwalker80/nbt-aa-tile/releases",
-      "requires": ["nbt-aad"],
+      "requires": [
+        "nbt-aad"
+      ],
       "verify": "test -e /opt/aa/nbt-aad",
       "verify_hint": "Android Auto (NBT-AAD) must be installed first (/opt/aa/nbt-aad was not found)",
       "upload": "files",
-      "files": ["aa-tile", "aa-tile.size", "install-boot.sh", "remove-boot.sh", "status.sh", "aa-tile-launcher.sh", "hook.txt"],
-      "backup_paths": ["/opt/conn/bin/start_webserver.sh"],
+      "files": [
+        "aa-tile",
+        "aa-tile.size",
+        "install-boot.sh",
+        "remove-boot.sh",
+        "status.sh",
+        "aa-tile-launcher.sh",
+        "hook.txt"
+      ],
+      "backup_paths": [
+        "/opt/conn/bin/start_webserver.sh"
+      ],
       "remount": "mount -o remount rw /net/hu-omap/fs/sda0 2>/dev/null; true",
       "steps": [
         "chmod 0755 {stage}/aa-tile {stage}/*.sh 2>/dev/null; true",
@@ -49,7 +65,6 @@
         "touch /var/opt/aa-tile/DISABLED 2>/dev/null; true"
       ]
     },
-
     "idrive-plus-plugins": {
       "name": "iDrive Plus (info pages)",
       "desc": "Weather/news/fuel/traffic/vehicle-status pages inside iDrive via the AA Wi-Fi. HU plugins install here; the phone app is sideloaded separately. News/fuel/traffic data is Italy-only as shipped.",
@@ -57,12 +72,19 @@
       "license": "PolyForm Noncommercial 1.0.0",
       "credit": "deathwalker80 - iDrive Plus",
       "source": "https://github.com/deathwalker80/idrive-plus/releases",
-      "requires": ["nbt-aad"],
+      "requires": [
+        "nbt-aad"
+      ],
       "verify": "test -e /opt/aa/nbt-aad",
       "verify_hint": "Android Auto (NBT-AAD) must be installed first (/opt/aa/nbt-aad was not found)",
       "upload": "dir",
-      "files": ["00-installa.sh", "10-togli.sh"],
-      "backup_paths": ["/opt/conn/bin/start_webserver.sh"],
+      "files": [
+        "00-installa.sh",
+        "10-togli.sh"
+      ],
+      "backup_paths": [
+        "/opt/conn/bin/start_webserver.sh"
+      ],
       "remount": "mount -o remount rw /net/hu-omap/fs/sda0 2>/dev/null; true",
       "steps": [
         "chmod 0755 {stage}/*.sh 2>/dev/null; true",
@@ -72,7 +94,6 @@
         "on -f /net/hu-omap/ /bin/sh -c 'cd {stage} && sh ./10-togli.sh 2>/dev/null || true'"
       ]
     },
-
     "entry-aad": {
       "name": "Wireless Android Auto (EntryNav2)",
       "desc": "Wireless Android Auto for EntryNav2 (1280x480, CarPlay Wi-Fi). Installs /opt/aa + /opt/hmi/data/ro/Plugins/EntryAad; runs its own --compat check first; reversible. EntryNav2 roots differently from NBT Evo. Alt: kizapp/entrynav2-idrive6-android-auto (GPL-3.0).",
@@ -82,8 +103,13 @@
       "source": "https://github.com/Jiraiya43/entry-aad/releases",
       "requires": [],
       "upload": "dir",
-      "files": ["opt/aa/entry-aad", "opt/aa/aa-supervisor"],
-      "backup_paths": ["/opt/hmi/data/ro/Plugins/EntryAad"],
+      "files": [
+        "opt/aa/entry-aad",
+        "opt/aa/aa-supervisor"
+      ],
+      "backup_paths": [
+        "/opt/hmi/data/ro/Plugins/EntryAad"
+      ],
       "remount": "mount -o remount,rw / 2>/dev/null; true",
       "steps": [
         "chmod 0755 {stage}/opt/aa/aa-supervisor {stage}/opt/aa/entry-aad 2>/dev/null; true",
@@ -99,6 +125,177 @@
       ],
       "remove_steps": [
         "mount -o remount,rw /; rm -rf /opt/hmi/data/ro/Plugins/EntryAad /opt/aa; mount -o remount,ro /"
+      ]
+    },
+    "apps-dashboard": {
+      "name": "Dashboard apps (BoostDeck, ShiftDeck, MHD+ Suite, Engine Codes)",
+      "desc": "The core gauge/diagnostic set: BoostDeck (boost, Active Ethanol, metric under OPTIONS), ShiftDeck, MHD+ Suite (map switching, Exhaust Flap, Max Cooling) and Engine Fault Codes. Needs a matched firmware profile (N18092I / P18362I - see source/docs/COMPATIBILITY.md).",
+      "platform": "nbt_evo",
+      "license": "see the package's own LICENSE/NOTICE",
+      "credit": "inotbarnacle - ID6_apps_prerelease (ID6Apps)",
+      "source": "packages/ in this repo (vendored from inotbarnacle/ID6_apps_prerelease), or that project's releases",
+      "requires": [],
+      "verify": "test -d /var/opt/hmi/data/ID5/Plugins",
+      "verify_hint": "the ID5 Plugins directory was not found - confirm this is an NBT Evo with a matched firmware profile (Identify first)",
+      "upload": "dir",
+      "files": [
+        "BoostDeck",
+        "ShiftDeck",
+        "MhdMaps",
+        "EngineCodes"
+      ],
+      "backup_paths": [
+        "/var/opt/hmi/data/ID5/Plugins/BoostDeck",
+        "/var/opt/hmi/data/ID5/Plugins/ShiftDeck",
+        "/var/opt/hmi/data/ID5/Plugins/MhdMaps",
+        "/var/opt/hmi/data/ID5/Plugins/EngineCodes"
+      ],
+      "steps": [
+        "mkdir -p /var/opt/hmi/data/ID5/Plugins",
+        "rm -rf /var/opt/hmi/data/ID5/Plugins/BoostDeck && cp -r {stage}/BoostDeck /var/opt/hmi/data/ID5/Plugins/",
+        "rm -rf /var/opt/hmi/data/ID5/Plugins/ShiftDeck && cp -r {stage}/ShiftDeck /var/opt/hmi/data/ID5/Plugins/",
+        "rm -rf /var/opt/hmi/data/ID5/Plugins/MhdMaps && cp -r {stage}/MhdMaps /var/opt/hmi/data/ID5/Plugins/",
+        "rm -rf /var/opt/hmi/data/ID5/Plugins/EngineCodes && cp -r {stage}/EngineCodes /var/opt/hmi/data/ID5/Plugins/",
+        "OnOffDSICommander appreset"
+      ],
+      "remove_steps": [
+        "rm -rf /var/opt/hmi/data/ID5/Plugins/BoostDeck /var/opt/hmi/data/ID5/Plugins/ShiftDeck /var/opt/hmi/data/ID5/Plugins/MhdMaps /var/opt/hmi/data/ID5/Plugins/EngineCodes",
+        "OnOffDSICommander appreset"
+      ]
+    },
+    "apps-hud-gauges": {
+      "name": "HUD Gauges",
+      "desc": "Curved windshield tachometer plus numeric boost in PSI, with a persistent on/off checkbox. Packaged build targets the reference 340i with the factory HUD. Needs a matched firmware profile (N18092I / P18362I - see source/docs/COMPATIBILITY.md).",
+      "platform": "nbt_evo",
+      "license": "see the package's own LICENSE/NOTICE",
+      "credit": "inotbarnacle - ID6_apps_prerelease (ID6Apps)",
+      "source": "packages/ in this repo (vendored from inotbarnacle/ID6_apps_prerelease), or that project's releases",
+      "requires": [],
+      "verify": "test -d /var/opt/hmi/data/ID5/Plugins",
+      "verify_hint": "the ID5 Plugins directory was not found - confirm this is an NBT Evo with a matched firmware profile (Identify first)",
+      "upload": "dir",
+      "files": [
+        "HudTest"
+      ],
+      "backup_paths": [
+        "/var/opt/hmi/data/ID5/Plugins/HudTest"
+      ],
+      "steps": [
+        "mkdir -p /var/opt/hmi/data/ID5/Plugins",
+        "rm -rf /var/opt/hmi/data/ID5/Plugins/HudTest && cp -r {stage}/HudTest /var/opt/hmi/data/ID5/Plugins/",
+        "OnOffDSICommander appreset"
+      ],
+      "remove_steps": [
+        "rm -rf /var/opt/hmi/data/ID5/Plugins/HudTest",
+        "OnOffDSICommander appreset"
+      ]
+    },
+    "apps-road-jet": {
+      "name": "Road Jet",
+      "desc": "Road Jet menu. Requires a 1280x480 display (the package ships that layout). Needs a matched firmware profile (N18092I / P18362I - see source/docs/COMPATIBILITY.md).",
+      "platform": "nbt_evo",
+      "license": "see the package's own LICENSE/NOTICE",
+      "credit": "inotbarnacle - ID6_apps_prerelease (ID6Apps)",
+      "source": "packages/ in this repo (vendored from inotbarnacle/ID6_apps_prerelease), or that project's releases",
+      "requires": [],
+      "verify": "test -d /var/opt/hmi/data/ID5/Plugins",
+      "verify_hint": "the ID5 Plugins directory was not found - confirm this is an NBT Evo with a matched firmware profile (Identify first)",
+      "upload": "dir",
+      "files": [
+        "RoadJet"
+      ],
+      "backup_paths": [
+        "/var/opt/hmi/data/ID5/Plugins/RoadJet"
+      ],
+      "steps": [
+        "mkdir -p /var/opt/hmi/data/ID5/Plugins",
+        "rm -rf /var/opt/hmi/data/ID5/Plugins/RoadJet && cp -r {stage}/RoadJet /var/opt/hmi/data/ID5/Plugins/",
+        "OnOffDSICommander appreset"
+      ],
+      "remove_steps": [
+        "rm -rf /var/opt/hmi/data/ID5/Plugins/RoadJet",
+        "OnOffDSICommander appreset"
+      ]
+    },
+    "apps-beamer": {
+      "name": "BEAMer",
+      "desc": "BEAMer menu. Requires a 1280x480 display (the package ships that layout). Needs a matched firmware profile (N18092I / P18362I - see source/docs/COMPATIBILITY.md).",
+      "platform": "nbt_evo",
+      "license": "see the package's own LICENSE/NOTICE",
+      "credit": "inotbarnacle - ID6_apps_prerelease (ID6Apps)",
+      "source": "packages/ in this repo (vendored from inotbarnacle/ID6_apps_prerelease), or that project's releases",
+      "requires": [],
+      "verify": "test -d /var/opt/hmi/data/ID5/Plugins",
+      "verify_hint": "the ID5 Plugins directory was not found - confirm this is an NBT Evo with a matched firmware profile (Identify first)",
+      "upload": "dir",
+      "files": [
+        "BEAMer"
+      ],
+      "backup_paths": [
+        "/var/opt/hmi/data/ID5/Plugins/BEAMer"
+      ],
+      "steps": [
+        "mkdir -p /var/opt/hmi/data/ID5/Plugins",
+        "rm -rf /var/opt/hmi/data/ID5/Plugins/BEAMer && cp -r {stage}/BEAMer /var/opt/hmi/data/ID5/Plugins/",
+        "OnOffDSICommander appreset"
+      ],
+      "remove_steps": [
+        "rm -rf /var/opt/hmi/data/ID5/Plugins/BEAMer",
+        "OnOffDSICommander appreset"
+      ]
+    },
+    "apps-bootmod3": {
+      "name": "Bootmod3 Suite (beta)",
+      "desc": "Control menu for compatible Bootmod3 CustomROM tunes: map switching, Active Sound, Exhaust Flap. Burble presets still need HSFZ. Beta. Needs a matched firmware profile (N18092I / P18362I - see source/docs/COMPATIBILITY.md).",
+      "platform": "nbt_evo",
+      "license": "see the package's own LICENSE/NOTICE",
+      "credit": "inotbarnacle - ID6_apps_prerelease (ID6Apps)",
+      "source": "packages/ in this repo (vendored from inotbarnacle/ID6_apps_prerelease), or that project's releases",
+      "requires": [],
+      "verify": "test -d /var/opt/hmi/data/ID5/Plugins",
+      "verify_hint": "the ID5 Plugins directory was not found - confirm this is an NBT Evo with a matched firmware profile (Identify first)",
+      "upload": "dir",
+      "files": [
+        "Bootmod3Suite"
+      ],
+      "backup_paths": [
+        "/var/opt/hmi/data/ID5/Plugins/Bootmod3Suite"
+      ],
+      "steps": [
+        "mkdir -p /var/opt/hmi/data/ID5/Plugins",
+        "rm -rf /var/opt/hmi/data/ID5/Plugins/Bootmod3Suite && cp -r {stage}/Bootmod3Suite /var/opt/hmi/data/ID5/Plugins/",
+        "OnOffDSICommander appreset"
+      ],
+      "remove_steps": [
+        "rm -rf /var/opt/hmi/data/ID5/Plugins/Bootmod3Suite",
+        "OnOffDSICommander appreset"
+      ]
+    },
+    "apps-xdrive": {
+      "name": "xDrive Control (experimental)",
+      "desc": "xDelete-style menu for temporary rear-wheel drive on supported DSC variants. Depends on the DSC controller; needs HSFZ. Experimental. Needs a matched firmware profile (N18092I / P18362I - see source/docs/COMPATIBILITY.md).",
+      "platform": "nbt_evo",
+      "license": "see the package's own LICENSE/NOTICE",
+      "credit": "inotbarnacle - ID6_apps_prerelease (ID6Apps)",
+      "source": "packages/ in this repo (vendored from inotbarnacle/ID6_apps_prerelease), or that project's releases",
+      "requires": [],
+      "verify": "test -d /var/opt/hmi/data/ID5/Plugins",
+      "verify_hint": "the ID5 Plugins directory was not found - confirm this is an NBT Evo with a matched firmware profile (Identify first)",
+      "upload": "dir",
+      "files": [
+        "XDriveControl"
+      ],
+      "backup_paths": [
+        "/var/opt/hmi/data/ID5/Plugins/XDriveControl"
+      ],
+      "steps": [
+        "mkdir -p /var/opt/hmi/data/ID5/Plugins",
+        "rm -rf /var/opt/hmi/data/ID5/Plugins/XDriveControl && cp -r {stage}/XDriveControl /var/opt/hmi/data/ID5/Plugins/",
+        "OnOffDSICommander appreset"
+      ],
+      "remove_steps": [
+        "rm -rf /var/opt/hmi/data/ID5/Plugins/XDriveControl",
+        "OnOffDSICommander appreset"
       ]
     }
   }

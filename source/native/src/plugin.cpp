@@ -4,6 +4,7 @@
 #include "gauge_core.h"
 #include "dial_scales.h"
 #include "diagnostic_worker.h"
+#include "diagnostic_gateway.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -29,10 +30,17 @@ namespace {
 // Parcel and dispatches through the primary invokeDataUpdate virtual.
 const unsigned kDataUpdateMessage = 0x40000003u;
 const unsigned kPollKey = 0x4244504cu; // BDPL, private to this app
-const unsigned kActivePollIntervalMs = 40u;
+const unsigned kActivePollIntervalMs = 25u;
 const unsigned kIdlePollIntervalMs = 250u;
 const char kCollector[] = "/var/opt/hmi/data/ID5/Plugins/BoostDeck/boostdeck-collector-qnx";
-typedef char dial_count_check[sizeof(kDialScales)/sizeof(kDialScales[0]) == BD_COUNT ? 1 : -1];
+const unsigned kBarCount = sizeof(kDialScales)/sizeof(kDialScales[0]);
+#ifdef PERF_LAB
+typedef char dial_count_check[kBarCount + 1 == BD_COUNT ? 1 : -1];
+const unsigned kEthanolFirst = 56100u;
+const unsigned kEthanolSteps = 20u;
+#else
+typedef char dial_count_check[kBarCount == BD_COUNT ? 1 : -1];
+#endif
 }
 
 class BoostDeck : public bmw::PluginApp {
@@ -44,6 +52,9 @@ class BoostDeck : public bmw::PluginApp {
     bool stopping_;
     bool gauges_visible_;
     unsigned color_;
+#ifdef PERF_LAB
+    bool metric_;
+#endif
     uint64_t retry_at_;
     void startVisibleCollector();
     void selectColor(unsigned color);
@@ -55,7 +66,11 @@ public:
               bmw::RHMIInterfaceVersion rhmi, const bmw::Bundle& cfg, const bmw::Bundle& res)
         : bmw::PluginApp(d,name,maj,mn,rhmi,cfg,res), fd_(-1), poll_generation_(0),
           received_(0), collector_(-1), stopping_(false), gauges_visible_(false),
-          color_(0), retry_at_(0) {
+          color_(0),
+#ifdef PERF_LAB
+          metric_(false),
+#endif
+          retry_at_(0) {
         resetDisplay();
     }
     virtual ~BoostDeck() { shutdown(); }
@@ -67,6 +82,13 @@ public:
         selectColor(Color);
         return true;
     }
+#ifdef PERF_LAB
+    template <bool Metric> bool changeUnits(const bmw::Parcel&) {
+        metric_=Metric;
+        refresh();
+        return true;
+    }
+#endif
     void reapCollector() {
         if (collector_ <= 0) return;
         pid_t ended = waitpid(collector_, 0, WNOHANG);
@@ -132,9 +154,15 @@ bool BoostDeck::onInit() {
         action.m_exec=colorHandlers[i];
         addHandler(40u+i,action);
     }
+#ifdef PERF_LAB
+    action.m_exec=&Action::execImpl<BoostDeck,&BoostDeck::changeUnits<false> >;
+    addHandler(49u,action);
+    action.m_exec=&Action::execImpl<BoostDeck,&BoostDeck::changeUnits<true> >;
+    addHandler(59u,action);
+#endif
     selectColor(color_);
     bmw::Parcel visible(true);
-    for (unsigned i=0;i<BD_COUNT;++i) setProperty(200u+i,3u,visible);
+    for (unsigned i=0;i<kBarCount;++i) setProperty(200u+i,3u,visible);
     refresh();
     if (fd_>=0) {
         ++poll_generation_;
@@ -162,9 +190,12 @@ bool BoostDeck::gaugeVisibility(const bmw::Parcel& event) {
 void BoostDeck::startVisibleCollector() {
     if (!gauges_visible_ || collector_>0 || fd_<0 ||
         bd_mono_ms()<retry_at_) return;
-    char host[16];
-    if (!installed_gateway(kCollector,host)) { retry_at_=bd_mono_ms()+2000; return; }
-    const char *args[]={kCollector,"--host",host,"--session",0};
+    const DiagnosticGateway gateway("/var/opt/hmi/data/ID5/Plugins/" "BoostDeck" "/gateway-ip.txt");
+    const char *args[]={kCollector,"--host",gateway.host(),"--session",
+#ifdef PERF_LAB
+                       "--ethanol",
+#endif
+                       0};
     collector_=launch(args,-1);
     retry_at_=bd_mono_ms()+2000;
 }
@@ -217,20 +248,28 @@ void BoostDeck::poll() {
 
 void BoostDeck::refresh() {
     uint64_t elapsed=received_ ? bd_mono_ms()-received_ : static_cast<uint64_t>(BD_STALE_MS);
-    for (unsigned i=0;i<BD_COUNT;++i) {
+    for (unsigned i=0;i<kBarCount;++i) {
         char label[128];
         const DialScale& scale = kDialScales[i];
         unsigned image = kBarFirst;
         if (received_ && bd_is_fresh(&frame_,i,elapsed)) {
             double x=frame_.value[i];
-            const char *prefix = frame_.demo && i==BD_BOOST ? "Demo " : "";
             const char *unit_space = *scale.unit ? " " : "";
+            double reading = bd_display_value(i,x,0);
+            if (i==BD_BOOST && fabs(reading)<0.05) reading=0;
+#ifdef PERF_LAB
+            if (metric_) {
+                const char* units=i==BD_AFR ? "" : i==BD_TIMING ? "deg" :
+                    i==BD_IAT || i==BD_TRANS || i==BD_COOLANT ? "\260C" : "bar";
+                snprintf(label,sizeof label,"%.1f%s%s",bd_display_value(i,x,1),*units ? " " : "",units);
+            } else snprintf(label,sizeof label,i==BD_RAIL ? "%.0f%s%s" : "%.1f%s%s",reading,unit_space,scale.unit);
+#else
+            const char *prefix = frame_.demo && i==BD_BOOST ? "Demo " : "";
             const char *format = i==BD_BOOST ? "%s%s   %+.1f%s%s"
                                 : i==BD_RAIL ? "%s%s   %.0f%s%s"
                                 : "%s%s   %.1f%s%s";
-            double reading = bd_display_value(i,x,0);
-            if (i==BD_BOOST && fabs(reading)<0.05) reading=0;
             snprintf(label,sizeof label,format,prefix,scale.name,reading,unit_space,scale.unit);
+#endif
             double fraction=(x-scale.minimum)/(scale.maximum-scale.minimum);
             if (fraction<0) fraction=0;
             if (fraction>1) fraction=1;
@@ -240,7 +279,11 @@ void BoostDeck::refresh() {
                 image += palette*kDialSteps+step;
             }
         } else {
+#ifdef PERF_LAB
+            strcpy(label,"--");
+#else
             snprintf(label,sizeof label,"%s   --",scale.name);
+#endif
         }
         if (image!=images_[i]) {
             updateModel(60u+i,bmw::ImageID(image));
@@ -251,7 +294,23 @@ void BoostDeck::refresh() {
             strcpy(labels_[i],label);
         }
     }
-
+#ifdef PERF_LAB
+    const bool valid = received_ && bd_is_fresh(&frame_,BD_ETHANOL,elapsed) &&
+        frame_.value[BD_ETHANOL]>=0 && frame_.value[BD_ETHANOL]<=100;
+    char ethanol[128];
+    if (valid) snprintf(ethanol,sizeof ethanol,"%.0f%%",frame_.value[BD_ETHANOL]);
+    else strcpy(ethanol,"--");
+    const unsigned step=valid ? static_cast<unsigned>(frame_.value[BD_ETHANOL]*kEthanolSteps/100.+.5) : 0;
+    const unsigned ethanolImage=kEthanolFirst+(step ? color_*kEthanolSteps+step : 0);
+    if (images_[BD_ETHANOL]!=ethanolImage) {
+        updateModel(68u,bmw::ImageID(ethanolImage));
+        images_[BD_ETHANOL]=ethanolImage;
+    }
+    if (strcmp(labels_[BD_ETHANOL],ethanol)) {
+        updateModel(58u,bmw::BasicString<char>(ethanol));
+        strcpy(labels_[BD_ETHANOL],ethanol);
+    }
+#endif
 }
 
 extern "C" {

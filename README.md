@@ -33,6 +33,27 @@ job as one guided procedure:
 what that platform supports — on NBT Evo, enabling SSH *is* OPT_DEBUG (one mechanism); EntryNav2
 roots differently and has its own Android Auto (entry-aad). See [docs/PLATFORMS.md](docs/PLATFORMS.md).
 
+## App catalog (synced from upstream)
+
+Upstream now publishes the **compiled app payloads** in [`packages/`](packages) — vendored here, so
+no separate payload is needed. All of them install through the guarded add-on installer:
+
+| Package | Apps | Notes |
+|---|---|---|
+| `dashboard.zip` | BoostDeck, ShiftDeck, MHD+ Suite, Engine Fault Codes | boost + Active Ethanol, map switching, Exhaust Flap, Max Cooling |
+| `hud-gauges.zip` | HUD Gauges | windshield tach + boost PSI; targets the reference 340i factory HUD |
+| `bootmod3.zip` | Bootmod3 Suite | **beta** — CustomROM map switching, Active Sound, Exhaust Flap |
+| `xdrive.zip` | xDrive Control | **experimental** — DSC-dependent, needs HSFZ |
+| `road-jet.zip` | Road Jet | requires a 1280 × 480 display |
+| `beamer.zip` | BEAMer | requires a 1280 × 480 display |
+
+Firmware eligibility is in [`source/docs/COMPATIBILITY.md`](source/docs/COMPATIBILITY.md)
+(installer-eligible: **N18092I**, **P18362I**). Identify checks the unit before anything installs.
+
+> Upstream's own desktop installer is now **v0.7.1 beta** (selectable menus + uninstall) and is
+> distributed as a release binary — its Go source is no longer published. This repo keeps its own
+> engine for the original gauge flow and installs the newer apps through the add-on framework.
+
 One branded wizard (`source/index.html`) is the whole UI; the stepper gates each stage and
 every risky action is confirmed. It's responsive for phone and desktop.
 

@@ -1,0 +1,139 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pluginApps>
+  <pluginApp applicationType="VehicleInformation" applicationWeight="209" text="Engine Fault Codes">
+    <entryButton id="1" action="10">
+      <properties>
+        <property id="23" value="2" />
+      </properties>
+    </entryButton>
+    <actions>
+      <hmiAction id="10" target="101" />
+      <hmiAction id="25" target="102" />
+      <raAction id="23" />
+      <raAction id="27" />
+      <raAction id="29" />
+    </actions>
+    <models>
+      <raDataModel id="80" modelType="Richtext" />
+      <raDataModel id="81" modelType="Richtext" />
+      <raDataModel id="82" modelType="Richtext" />
+      <raDataModel id="83" modelType="Richtext" />
+      <raDataModel id="84" modelType="Richtext" />
+      <raDataModel id="89" modelType="Richtext" />
+      <raDataModel id="90" modelType="Richtext" />
+      <imageIdModel id="95" imageId="56700" />
+      <raDataModel id="91" modelType="Richtext" />
+      <raDataModel id="92" modelType="Richtext" />
+      <raDataModel id="93" modelType="Richtext" />
+      <raDataModel id="94" modelType="Richtext" />
+    </models>
+    <hmiStates>
+      <hmiState id="101" text="Engine Fault Codes">
+        <optionComponents>
+          <button id="312" action="29" text="Next page" />
+          <button id="313" action="25" text="Clear engine codes..." />
+        </optionComponents>
+        <components>
+          <image id="328" model="95">
+            <properties>
+              <property id="20" value="36" />
+              <property id="21" value="9" />
+              <property id="9" value="1120" />
+              <property id="10" value="352" />
+              <property id="2" value="false" />
+              <property id="3" value="true" />
+            </properties>
+          </image>
+          <label id="320" model="80">
+            <properties>
+              <property id="20" value="58" />
+              <property id="21" value="20" />
+              <property id="9" value="1067" />
+              <property id="10" value="55" />
+            </properties>
+          </label>
+          <label id="321" model="81">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="83" />
+              <property id="9" value="255" />
+              <property id="10" value="55" />
+            </properties>
+          </label>
+          <label id="322" model="82">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="150" />
+              <property id="9" value="255" />
+              <property id="10" value="55" />
+            </properties>
+          </label>
+          <label id="323" model="83">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="217" />
+              <property id="9" value="255" />
+              <property id="10" value="55" />
+            </properties>
+          </label>
+          <label id="324" model="84">
+            <properties>
+              <property id="20" value="62" />
+              <property id="21" value="284" />
+              <property id="9" value="255" />
+              <property id="10" value="55" />
+            </properties>
+          </label>
+          <button id="310" action="23" text="Read engine codes">
+            <properties>
+              <property id="20" value="49" />
+              <property id="21" value="370" />
+              <property id="9" value="460" />
+              <property id="10" value="52" />
+            </properties>
+          </button>
+          <label id="330" model="91">
+            <properties>
+              <property id="20" value="326" />
+              <property id="21" value="83" />
+              <property id="9" value="801" />
+              <property id="10" value="58" />
+            </properties>
+          </label>
+          <label id="331" model="92">
+            <properties>
+              <property id="20" value="326" />
+              <property id="21" value="150" />
+              <property id="9" value="801" />
+              <property id="10" value="58" />
+            </properties>
+          </label>
+          <label id="332" model="93">
+            <properties>
+              <property id="20" value="326" />
+              <property id="21" value="217" />
+              <property id="9" value="801" />
+              <property id="10" value="58" />
+            </properties>
+          </label>
+          <label id="333" model="94">
+            <properties>
+              <property id="20" value="326" />
+              <property id="21" value="284" />
+              <property id="9" value="801" />
+              <property id="10" value="58" />
+            </properties>
+          </label>
+        </components>
+      </hmiState>
+      <hmiState id="102" parentId="101" text="Clear engine codes?">
+        <components>
+          <button id="340" action="27" text="Confirm clear engine codes" />
+          <label id="350" model="89" />
+          <label id="360" model="90" />
+          <label id="370" model="80" />
+        </components>
+      </hmiState>
+    </hmiStates>
+  </pluginApp>
+</pluginApps>

@@ -10,6 +10,7 @@ credit the original authors.
 | Component | Author | License | Source |
 |---|---|---|---|
 | NBT Evo Gauges (gauge engine) | upstream | see `source/LICENSE` | source/ |
+| ID6Apps app packages (`packages/`) | inotbarnacle | each package's own LICENSE/NOTICE inside the zip | github.com/inotbarnacle/ID6_apps_prerelease |
 | NBT-Evo SSH Unlocker | Xayanix | see repo | github.com/Xayanix/nbt-evo-ssh-unlocker |
 | BMW HU Info (identify concept) | Viaszx | see repo | github.com/Viaszx/BMW_HU_Info |
 

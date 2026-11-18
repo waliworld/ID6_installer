@@ -1,0 +1,472 @@
+{
+ "format": 2,
+ "reference": "NBTevo_N18032I",
+ "plugins": [
+  "libBoostDeck.so",
+  "libBootmod3Suite.so",
+  "libEngineCodes.so",
+  "libHudTest.so",
+  "libMhdMaps.so",
+  "libShiftDeck.so",
+  "libXDriveControl.so"
+ ],
+ "frameworks": {
+  "libAppFramework.A.so": {
+   "sha256": "93f4c7ab7e59c0adf7923b9b491de06165ba9d97bbe7412292e7ddc418ca2123",
+   "compiler_comment": "GCC: (GNU) 4.4.2\u0000GCC: (GNU) 4.4.2\u0000\u0000GCC: (GNU) 4.4.2",
+   "functions": {
+    "_ZN3bmw11BasicStringIcEC1EPKc": {
+     "bytes": 136,
+     "prefix_sha256": "2ffc25059e0d49e9d4c616e71f4f3e82c52dcb2576bbbb55b03ae9b2fecc0838"
+    },
+    "_ZN3bmw11BasicStringIcEC1ERKS1_": {
+     "bytes": 124,
+     "prefix_sha256": "add5990a622cd2dab988372dbb6c6824d812dd7d6e88a162ec97af20e7a4a11d"
+    },
+    "_ZN3bmw11BasicStringIcED1Ev": {
+     "bytes": 96,
+     "prefix_sha256": "36eed2fc3a3e58697d0aa5f553936c69205faf01a7c6ecacdad984272a61fe62"
+    },
+    "_ZN3bmw6ParcelD1Ev": {
+     "bytes": 36,
+     "prefix_sha256": "19399feaa39bb085fcafe3d67dcd5bfde7b451b6b2f2d95bfb5ce417c1165657"
+    },
+    "_ZN3bmw7MessageC1EjRKNS_6ParcelE": {
+     "bytes": 100,
+     "prefix_sha256": "cc69d35e2c0ed20ac7637cc39b41d6b85b7bd589b3205e6b06798973f13d1683"
+    },
+    "_ZN3bmw7MessageD1Ev": {
+     "bytes": 64,
+     "prefix_sha256": "6bbe572771fe7ed662937c7f029446d3c4dcfbfb20956e52439bc6dcfaefd3d1"
+    },
+    "_ZN3bmw9PluginApp10addHandlerEjRKNS_8DelegateIbRKNS_6ParcelEvvvEE": {
+     "bytes": 56,
+     "prefix_sha256": "c6c94312354fae1c7c1c2f0189246901c9e6bd2fe953c1c78d963f6a2d7c1450"
+    },
+    "_ZN3bmw9PluginApp10addHandlerEjjRKNS_8DelegateIbRKNS_6ParcelEvvvEE": {
+     "bytes": 56,
+     "prefix_sha256": "5410f754ec278ccfbd3230969c82d899b08c70ae13c5603f5ccf8308d1463ef3"
+    },
+    "_ZN3bmw9PluginApp10deactivateEv": {
+     "bytes": 56,
+     "prefix_sha256": "acd68bd363227bfd174158dfb3dc541745e231e31fcad233e896302c4bc10a1f"
+    },
+    "_ZN3bmw9PluginApp10onFinalizeEv": {
+     "bytes": 12,
+     "prefix_sha256": "15030d6c2cf9d5052c392e4e2d89983be9b1b1b76788ab3c8006d5ffa4a8e2b1"
+    },
+    "_ZN3bmw9PluginApp11handleEventEjjRKNS_6ParcelE": {
+     "bytes": 116,
+     "prefix_sha256": "756e45de6aa02d39ae820b28900b95b2d6f7c587c35752d0728c315e096abc09"
+    },
+    "_ZN3bmw9PluginApp11setPropertyEjjRKNS_6ParcelE": {
+     "bytes": 32,
+     "prefix_sha256": "126e88ad478d395b8346cd3e0487bcbe262375aee810a9c83b3ed61db854aa2d"
+    },
+    "_ZN3bmw9PluginApp11updateModelEjRKNS_11BasicStringIcEE": {
+     "bytes": 32,
+     "prefix_sha256": "29ca53431958ffe38ab3043b3f43801a211304d9d37119643d68633b8a82ef5f"
+    },
+    "_ZN3bmw9PluginApp11updateModelEjRKNS_6ParcelEh": {
+     "bytes": 112,
+     "prefix_sha256": "88f74d52c2f1663e603bda39dd16468d65027a9c1ddecb2997e500f63fc3c95e"
+    },
+    "_ZN3bmw9PluginApp11updateModelEjRKNS_7ImageIDE": {
+     "bytes": 32,
+     "prefix_sha256": "772e1d0c1b451534b2e230a86769887eb27150f1146ec2156a85c1c5c10fa4b4"
+    },
+    "_ZN3bmw9PluginApp11updateModelEjb": {
+     "bytes": 32,
+     "prefix_sha256": "a4eb236565d923775033ca5648b366b740709e273952f5f48bf969d6a3fc9aaa"
+    },
+    "_ZN3bmw9PluginApp13handleMessageERKNS_7MessageE": {
+     "bytes": 1104,
+     "prefix_sha256": "64fa96af0e3c1c19b01ddafc53bffcd965ef0ba0fc4f2d2af66b24c1b040bbea"
+    },
+    "_ZN3bmw9PluginApp13invokeCommandEjRKNS_6ParcelE": {
+     "bytes": 112,
+     "prefix_sha256": "8a1ad0c0669c37f3e3c80fca8dd2e7759934b7380515be9496071929e340d491"
+    },
+    "_ZN3bmw9PluginApp14invokeSdsEventEjRKNS_3MapIjNS_7VariantEEE": {
+     "bytes": 28,
+     "prefix_sha256": "fd4404e97acbc21353da99311da03da74495fc4792417cd7ed75a0e346d3a0cd"
+    },
+    "_ZN3bmw9PluginApp15getCapabilitiesERKSs": {
+     "bytes": 40,
+     "prefix_sha256": "8d9139b24eeaf168ccb489eac2c6444de1d955ca7ba8caf004e7d56ee9f67b2a"
+    },
+    "_ZN3bmw9PluginApp15invokeCDSUpdateERNS_11BasicStringIcEERNS1_ItEE": {
+     "bytes": 64,
+     "prefix_sha256": "a90baa9f0a1349973a666bfc57811b9d3860931716c166f367de2d4d1181742a"
+    },
+    "_ZN3bmw9PluginApp16invokeDataUpdateEjRKNS_6ParcelE": {
+     "bytes": 112,
+     "prefix_sha256": "d2633011dc80d3e888e975d7365e84dd57045368ab6540b8a18cbafc42798be6"
+    },
+    "_ZN3bmw9PluginApp16requestDataValueEj": {
+     "bytes": 32,
+     "prefix_sha256": "11a5eb80c0b0f9154849b20ac8d63c2550e7236370e62b78e346d63b70c5de69"
+    },
+    "_ZN3bmw9PluginApp18handleEventWithMapEjjRKNS_3MapIjNS_7VariantEEE": {
+     "bytes": 116,
+     "prefix_sha256": "0a079a8439aaa09e97c309590788f10141943f1dc1f3e497cfd70b8850b280c8"
+    },
+    "_ZN3bmw9PluginApp18updateModelWithMapEjRKNS_3MapIjNS_7VariantEEE": {
+     "bytes": 112,
+     "prefix_sha256": "bc8f3dc9df066493f51731306d47dee3748ed6427f4145665bc8578b1f8de54c"
+    },
+    "_ZN3bmw9PluginApp19onCheckAppAvailableEv": {
+     "bytes": 16,
+     "prefix_sha256": "f762596f208a7e0de63f404e50f7284ad822a0bf90e9d9f50dbb2b721c9c08b4"
+    },
+    "_ZN3bmw9PluginApp20invokeCommandWithMapEjRKNS_3MapIjNS_7VariantEEE": {
+     "bytes": 112,
+     "prefix_sha256": "0df94c71368cf8f80e133b48fe501135943ebc24c720e5b9b2ccf5f914f6b896"
+    },
+    "_ZN3bmw9PluginApp22invokeAppManagerUpdateERKNS_11BasicStringIcEE": {
+     "bytes": 56,
+     "prefix_sha256": "de8abb27a000c44d5bc5fd2a5ddeac05cc80efebfe9fff8bacf31b26ac482fe3"
+    },
+    "_ZN3bmw9PluginApp23invokeVoiceStateChangedEt": {
+     "bytes": 32,
+     "prefix_sha256": "5991f0b16c715147d371e47f77fca88d8ccbf9bed964941c31b7ac61d84b0c37"
+    },
+    "_ZN3bmw9PluginApp4initEv": {
+     "bytes": 48,
+     "prefix_sha256": "18829918ded6b07e39b34309ee65791fe433a2c1f9d5ca077197e1134a58b5de"
+    },
+    "_ZN3bmw9PluginApp4postEPNS_8RunnableE": {
+     "bytes": 20,
+     "prefix_sha256": "197f6ff8a95326ef62981a47e983ff40d22daaf4dd077a88303a27e6e6bb161d"
+    },
+    "_ZN3bmw9PluginApp4postEPNS_8RunnableEj": {
+     "bytes": 20,
+     "prefix_sha256": "86674865de6935e0d3f17534d3f396e589ff6324fbf07b6eb81845419a2a9bdc"
+    },
+    "_ZN3bmw9PluginApp4postERKNS_7MessageE": {
+     "bytes": 20,
+     "prefix_sha256": "04bff875b6ed6a202389a7b8f3752e1372d759321325139b23179fc9a177ffb9"
+    },
+    "_ZN3bmw9PluginApp4postERKNS_7MessageEj": {
+     "bytes": 20,
+     "prefix_sha256": "d89a1bb5e6611e13e39863f34e4e1d439b9a2b40aaa2940e25c5860983a1c267"
+    },
+    "_ZN3bmw9PluginApp4stopEv": {
+     "bytes": 196,
+     "prefix_sha256": "b61529ad737ab250ba8d2a6b64b4b7e9601efc4ed84f5e1a18d01a4e8d24f695"
+    },
+    "_ZN3bmw9PluginApp5startEv": {
+     "bytes": 176,
+     "prefix_sha256": "61a5e75bf2557581cd9fdb0283febffd6288716805a32e669164dca1d11ef4ce"
+    },
+    "_ZN3bmw9PluginApp7onErrorEjRKNS_11BasicStringIcEE": {
+     "bytes": 12,
+     "prefix_sha256": "15030d6c2cf9d5052c392e4e2d89983be9b1b1b76788ab3c8006d5ffa4a8e2b1"
+    },
+    "_ZN3bmw9PluginApp8activateEv": {
+     "bytes": 120,
+     "prefix_sha256": "4b064bb5914d844d43aca998c3301d1d05c3c453cbcfa291e20e0b35df21d6de"
+    },
+    "_ZN3bmw9PluginApp8finalizeEv": {
+     "bytes": 40,
+     "prefix_sha256": "901f5e6982a09604507774909b92d7bf743965620712f216c5b0ea9a070c07a7"
+    },
+    "_ZN3bmw9PluginAppC1ERNS_11IDispatcherENS_11BasicStringIcEEjjNS_20RHMIInterfaceVersionERKNS_6BundleES8_": {
+     "bytes": 2016,
+     "prefix_sha256": "38e012b1b8a315b87f268c5be7ccd68071fc22e3f31392933813584d8653596b"
+    },
+    "_ZN3bmw9PluginAppC2ERNS_11IDispatcherENS_11BasicStringIcEEjjNS_20RHMIInterfaceVersionERKNS_6BundleES8_": {
+     "bytes": 2016,
+     "prefix_sha256": "4d3581ab0aab58d3b1a86fd133c603fa604cd15628be6390982ec8e8e300f556"
+    },
+    "_ZN3bmw9PluginAppD2Ev": {
+     "bytes": 632,
+     "prefix_sha256": "5c29cc321e4c929325dabcc9dff06391c6a1b04dc45747604ff7491166d1ce18"
+    },
+    "_ZNK3bmw9PluginApp10getVersionERjS1_S1_": {
+     "bytes": 36,
+     "prefix_sha256": "8aaf65b84d329e54ace9479ed662b4507b30245bf6a66bf3fef45c4f8d0c7f82"
+    },
+    "_ZNK3bmw9PluginApp14getRhmiVersionERNS_20RHMIInterfaceVersionE": {
+     "bytes": 20,
+     "prefix_sha256": "4f2313ac8377cc91a058c15a22555dd020fc1649ffe56a19e82bbb533e191e34"
+    },
+    "_ZNK3bmw9PluginApp15getResourceFileENS_12ResourceType13ResourceTypesE": {
+     "bytes": 232,
+     "prefix_sha256": "bef25ed046f6d3525f08908089a2a8b07b5a27f6b2ab444a85c1191c5470be76"
+    },
+    "_ZNK3bmw9PluginApp7getNameEv": {
+     "bytes": 16,
+     "prefix_sha256": "eb4d35fb8fd852e3aaaeaf9dd4168d9293b4e45c5d9ab27147dc7723127e2968"
+    }
+   },
+   "objects": {
+    "_ZTIN3bmw9PluginAppE": {
+     "bytes": 32,
+     "type": "STT_OBJECT"
+    }
+   },
+   "vtables": {
+    "_ZTVN3bmw9PluginAppE": {
+     "bytes": 172,
+     "sha256": "e2d8d10a4d7c3c1ac47ed214cd4e3b26b82be7931acf7e88cc6b31a5af038979",
+     "relocations": [
+      null,
+      [
+       2,
+       "_ZTIN3bmw9PluginAppE"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginAppD1Ev"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginAppD0Ev"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp5startEv"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp4stopEv"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp8activateEv"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp10deactivateEv"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp4initEv"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp8finalizeEv"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp4postERKNS_7MessageE"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp4postERKNS_7MessageEj"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp4postEPNS_8RunnableE"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp4postEPNS_8RunnableEj"
+      ],
+      [
+       2,
+       "_ZNK3bmw9PluginApp7getNameEv"
+      ],
+      [
+       2,
+       "_ZNK3bmw9PluginApp15getResourceFileENS_12ResourceType13ResourceTypesE"
+      ],
+      [
+       2,
+       "_ZNK3bmw9PluginApp10getVersionERjS1_S1_"
+      ],
+      [
+       2,
+       "_ZNK3bmw9PluginApp14getRhmiVersionERNS_20RHMIInterfaceVersionE"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp13invokeCommandEjRKNS_6ParcelE"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp11updateModelEjRKNS_6ParcelEh"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp11handleEventEjjRKNS_6ParcelE"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp16invokeDataUpdateEjRKNS_6ParcelE"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp16requestDataValueEj"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp7onErrorEjRKNS_11BasicStringIcEE"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp6onInitEv"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp10onFinalizeEv"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp15getCapabilitiesERKSs"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp19onCheckAppAvailableEv"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp13handleMessageERKNS_7MessageE"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp20invokeCommandWithMapEjRKNS_3MapIjNS_7VariantEEE"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp18updateModelWithMapEjRKNS_3MapIjNS_7VariantEEE"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp18handleEventWithMapEjjRKNS_3MapIjNS_7VariantEEE"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp15invokeCDSUpdateERNS_11BasicStringIcEERNS1_ItEE"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp23invokeVoiceStateChangedEt"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp22invokeAppManagerUpdateERKNS_11BasicStringIcEE"
+      ],
+      [
+       2,
+       "_ZN3bmw9PluginApp14invokeSdsEventEjRKNS_3MapIjNS_7VariantEEE"
+      ],
+      null,
+      [
+       2,
+       "_ZTIN3bmw9PluginAppE"
+      ],
+      [
+       2,
+       "_ZThn4_N3bmw9PluginAppD1Ev"
+      ],
+      [
+       2,
+       "_ZThn4_N3bmw9PluginAppD0Ev"
+      ],
+      [
+       2,
+       "_ZN3bmw16PluginAppHandler12nextExecTimeEv"
+      ],
+      [
+       2,
+       "_ZN3bmw16PluginAppHandler8dispatchEv"
+      ],
+      [
+       2,
+       "_ZThn4_N3bmw9PluginApp13handleMessageERKNS_7MessageE"
+      ]
+     ]
+    },
+    "_ZTVN3bmw8RunnableE": {
+     "bytes": 20,
+     "sha256": "de47c9b27eb8d300dbb5f2c353e632c393262cf06340c4fa7f1b40c4cbd36f90",
+     "relocations": [
+      null,
+      [
+       2,
+       "_ZTIN3bmw8RunnableE"
+      ],
+      [
+       2,
+       "_ZN3bmw8RunnableD1Ev"
+      ],
+      [
+       2,
+       "_ZN3bmw8RunnableD0Ev"
+      ],
+      [
+       2,
+       "__cxa_pure_virtual"
+      ]
+     ]
+    }
+   }
+  },
+  "libCoreFramework.A.so": {
+   "sha256": "64ba154c68c772f9ca779fc18507f5b34715be58ded4a198b8a62b90d16c3ee0",
+   "compiler_comment": "GCC: (GNU) 4.4.2\u0000GCC: (GNU) 4.4.2\u0000\u0000GCC: (GNU) 4.4.2",
+   "functions": {
+    "_ZN3bmw11BasicStringIcEC1ERKS1_": {
+     "bytes": 124,
+     "prefix_sha256": "50993e4cb060236dbd2855d259e0b02869c2c750e87aba949649df487bd81db2"
+    },
+    "_ZN3bmw11BasicStringIcED1Ev": {
+     "bytes": 96,
+     "prefix_sha256": "35bb725675263eff7aa22d58a8f296e6f49da0e9c6d4cf904edc0f20a3f20dd0"
+    },
+    "_ZN3bmw6Parcel11writeUInt32Ej": {
+     "bytes": 100,
+     "prefix_sha256": "95408693625bfed401b722fccc098d46a95a1adcf55e9b5a8ada539bfb584ebf"
+    },
+    "_ZN3bmw6ParcelC1Eb": {
+     "bytes": 100,
+     "prefix_sha256": "3e32ede4c1c5359c9f2b9732d116f44cb9ab49871dd921a82a4654b8b253daa5"
+    },
+    "_ZN3bmw6ParcelC1Ev": {
+     "bytes": 64,
+     "prefix_sha256": "9e75067d1359790247372b296656c2f7ec5dbf89c0f6fc153b42a00d7930e8cc"
+    },
+    "_ZN3bmw7ImageIDC1Ej": {
+     "bytes": 28,
+     "prefix_sha256": "76c735984b30031361556ac15b8a700e8d31a688bebe99284dd14671bfda7761"
+    },
+    "_ZNK3bmw6Parcel10readUInt32ERj": {
+     "bytes": 96,
+     "prefix_sha256": "31a2fb66341e31a03c2f83e1979b07c13cbb4271d9f1542159bd0cefbdc54b3a"
+    },
+    "_ZNK3bmw6Parcel8readBoolERb": {
+     "bytes": 68,
+     "prefix_sha256": "b8071d19addbfa60edaf038a275b432a6d95a648a4459bb78f9d43aba2653419"
+    }
+   },
+   "objects": {},
+   "vtables": {
+    "_ZTVN3bmw8RunnableE": {
+     "bytes": 20,
+     "sha256": "de47c9b27eb8d300dbb5f2c353e632c393262cf06340c4fa7f1b40c4cbd36f90",
+     "relocations": [
+      null,
+      [
+       2,
+       "_ZTIN3bmw8RunnableE"
+      ],
+      [
+       2,
+       "_ZN3bmw8RunnableD1Ev"
+      ],
+      [
+       2,
+       "_ZN3bmw8RunnableD0Ev"
+      ],
+      [
+       2,
+       "__cxa_pure_virtual"
+      ]
+     ]
+    }
+   }
+  }
+ }
+}
