@@ -103,6 +103,11 @@ ul.need li{margin:.3rem 0}
 output{display:block;min-height:2.6rem;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:10px;color:#eaf2ff;font-size:.95rem}
 .foot{margin-top:22px;color:var(--soft);font-size:.8rem;text-align:center;line-height:1.7}
 .foot a{color:var(--mut)}
+.approw{display:flex;align-items:center;gap:9px;flex-wrap:wrap;border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:10px 12px;margin-top:8px;background:var(--panel-2);font-weight:500;cursor:pointer}
+.approw input{width:auto;min-height:0;margin:0;accent-color:var(--brand)}
+.approw strong{font-weight:700}
+.approw .hint{flex:1 1 100%;margin:0}
 .addon{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px;margin-top:12px;background:var(--panel-2)}
 .addon h3{margin:0;font-size:.98rem}
 .addon .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:2px}
@@ -133,7 +138,7 @@ output{display:block;min-height:2.6rem;white-space:pre-wrap;overflow-wrap:anywhe
   <div class="step" id="st1" data-state="active"><span class="n"><span>1</span></span><span class="t">Connect</span></div>
   <div class="step" id="st2"><span class="n"><span>2</span></span><span class="t">Enable SSH</span></div>
   <div class="step" id="st3"><span class="n"><span>3</span></span><span class="t">Identify</span></div>
-  <div class="step" id="st4"><span class="n"><span>4</span></span><span class="t">Gauges</span></div>
+  <div class="step" id="st4"><span class="n"><span>4</span></span><span class="t">Apps</span></div>
   <div class="step" id="st5"><span class="n"><span>5</span></span><span class="t">CarPlay</span></div>
   <div class="step" id="st6"><span class="n"><span>6</span></span><span class="t">Secure</span></div>
 </div>
@@ -230,11 +235,21 @@ output{display:block;min-height:2.6rem;white-space:pre-wrap;overflow-wrap:anywhe
 <!-- 4 GAUGES -->
 <section id="sec4" aria-disabled="true" data-platform="nbt_evo">
   <span class="eyebrow">Step 4</span>
-  <h2>Install the gauges</h2>
-  <p class="sub">Installs BoostDeck, ShiftDeck and MHD Maps, keeping a backup of anything replaced. Keep iDrive on and the cable connected.</p>
-  <div class="primary-row">
-    <button type="button" id="install" disabled><span class="spin"></span><span>Install all three apps</span></button>
+  <h2>Apps</h2>
+  <p class="sub">Every ID6Apps menu, installed from the packages bundled with this program — nothing to download. Pick what you want: layouts are generated for your display, existing copies are backed up, and every file is hash-verified before it goes live.</p>
+  <div class="grid">
+    <label>Display <select id="app-display"><option value="">Auto (detected)</option></select></label>
+    <label>Operation <select id="app-op">
+      <option value="install">Install selected</option>
+      <option value="uninstall">Uninstall selected</option>
+    </select></label>
   </div>
+  <div class="primary-row">
+    <button type="button" id="apps-load" class="secondary"><span class="spin"></span><span>Load app list</span></button>
+    <button type="button" id="apps-go" disabled><span class="spin"></span><span>Install selected</span></button>
+  </div>
+  <div id="app-list"></div>
+  <p class="hint">Needs a matched firmware profile (Identify checks it). Road Jet and BEAMer ship a 1280 × 480-only layout.</p>
 </section>
 
 <!-- 5 CARPLAY -->
@@ -334,10 +349,10 @@ function phase(){
   if(state.identified){ stepState("st4", state.ready?"active":""); stepState("st5","active"); stepState("st6","active"); }
 }
 function controls(){
-  for(const id of ["find","selftest","inspect","recover","install","carplay","revert","quit","display-settings"]) if($(id)) $(id).disabled=busy;
+  for(const id of ["find","selftest","inspect","recover","carplay","revert","quit","display-settings","apps-load"]) if($(id)) $(id).disabled=busy;
   $("unlock").disabled = busy || !($("riskack").checked && $("confirmunlock").value.trim().toUpperCase()==="UNLOCK");
-  $("install").disabled = busy || !state.ready;
-  for(const id of ["find","selftest","unlock","inspect","install","carplay","revert","recover","quit"]){const b=$(id); if(b) b.dataset.busy=(busy&&!b.disabled)?"true":"false";}
+  $("apps-go").disabled = busy || !state.ready || !document.querySelector("#app-list input:checked");
+  for(const id of ["find","selftest","unlock","inspect","apps-load","apps-go","carplay","revert","recover","quit"]){const b=$(id); if(b) b.dataset.busy=(busy&&!b.disabled)?"true":"false";}
   phase();
 }
 function resetFromIPs(){ state.sshOn=false; state.identified=false; state.ready=false; state.platform="unknown"; applyPlatform();
@@ -447,7 +462,45 @@ async function vehicle(action){
   finally{controls();}
 }
 $("inspect").onclick=()=>vehicle("inspect");
-$("install").onclick=()=>vehicle("install");
+// ---- Apps: unified ID6Apps installer (all packages bundled with this program) ----
+$("app-list").addEventListener("change",()=>controls());
+$("app-op").addEventListener("change",()=>{
+  $("apps-go").querySelector("span:last-child").textContent =
+    $("app-op").value==="uninstall" ? "Uninstall selected" : "Install selected";
+});
+$("apps-load").onclick=async()=>{
+  setPill("run","Loading apps"); $("status").textContent="Reading the bundled app packages…";
+  try{
+    const r=await request("apps-catalog");
+    const sel=$("app-display"); sel.replaceChildren(new Option("Auto (detected)",""));
+    for(const d of (r.Displays||[])) sel.appendChild(new Option(d,d));
+    const host=$("app-list"); host.replaceChildren();
+    for(const a of (r.Apps||[])){
+      const row=document.createElement("label"); row.className="approw";
+      row.innerHTML=`<input type="checkbox" value="${esc(a.app)}"><strong>${esc(a.app)}</strong>`
+        +`<span class="tag">${esc(a.package)}</span>`
+        +(a.note?`<span class="hint">${esc(a.note)}</span>`:"");
+      host.appendChild(row);
+    }
+    setPill("ok","Apps loaded");
+    $("status").textContent=r.Result+" Tick what you want, pick the operation, then run it.";
+    controls();
+  }catch(e){ if(e.message==="__NO_ENDPOINT__")return endpointMissing("App catalog"); setPill("bad","Error");$("status").textContent=e.message; }
+};
+$("apps-go").onclick=async()=>{
+  const apps=[...document.querySelectorAll("#app-list input:checked")].map(i=>i.value);
+  if(!apps.length) return;
+  const op=$("app-op").value;
+  if(!confirm((op==="uninstall"?"Uninstall ":"Install ")+apps.join(", ")+"? Existing copies are backed up on the unit first.")) return;
+  setPill("run", op==="uninstall"?"Uninstalling":"Installing");
+  $("status").textContent=(op==="uninstall"?"Removing ":"Installing ")+apps.join(", ")+"… keep iDrive on and the cable connected.";
+  try{
+    const r=await request("apps-"+op,{Head:$("Head").value.trim(),Gateway:$("Gateway").value.trim(),Local:local,
+                                     Password:$("Password").value,apps,display:$("app-display").value});
+    setPill(r.Ok?"ok":(r.Blocked?"bad":"warn"), r.Ok?"Done":(r.Blocked?"Blocked":"Checked"));
+    $("status").textContent=[r.Result,(r.Log||[]).join("\n")].filter(Boolean).join("\n")||"Done.";
+  }catch(e){ if(e.message==="__NO_ENDPOINT__")return endpointMissing("Apps"); setPill("bad","Error");$("status").textContent=e.message; }
+};
 $("carplay-activate").onclick=()=>{ if(confirm("Attempt to activate CarPlay on this unit? The local FSC mint runs; car-write steps need your PSdZData + consent VIN and follow the toolkit runbooks.")) vehicle("carplay-activate"); };
 
 // ---- Coding & FSC (toolkit) ----

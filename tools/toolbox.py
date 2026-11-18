@@ -34,6 +34,7 @@ PY = sys.executable or "python3"
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE / "addons"))
 sys.path.insert(0, str(HERE / "coding"))
+sys.path.insert(0, str(HERE / "apps"))
 import carplay_fsc
 try:
     import addon_kit
@@ -43,6 +44,10 @@ try:
     import toolkit_bridge
 except ImportError:
     toolkit_bridge = None
+try:
+    import app_installer
+except ImportError:
+    app_installer = None
 import hu_platform
 
 from types import SimpleNamespace
@@ -209,7 +214,17 @@ OPS = {
     "coding-set": lambda b: _tk("coding_set", b),
     "platform-detect": hu_platform.detect,
     "psdzdata-locate": hu_platform.psdzdata_locate,
+    "apps-catalog": lambda b: _apps("catalog", b),
+    "apps-compat": lambda b: _apps("compat", b),
+    "apps-install": lambda b: _apps("install", b),
+    "apps-uninstall": lambda b: _apps("uninstall", b),
 }
+
+
+def _apps(fn: str, body: dict) -> dict:
+    if app_installer is None:
+        return {"Ok": False, "Result": "App installer unavailable (tools/apps missing)."}
+    return getattr(app_installer, fn)(body)
 
 
 def main() -> int:
