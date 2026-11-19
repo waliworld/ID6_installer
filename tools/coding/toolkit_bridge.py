@@ -47,8 +47,16 @@ def _env(body: dict | None = None) -> dict:
 
 
 def _run(args: list[str], timeout=60, body: dict | None = None):
+    # Frozen build: re-invoke the app with --run-tool (no python interpreter present).
+    if getattr(sys, "frozen", False):
+        if args and args[0] == "-m":
+            cmd = [sys.executable, "--run-tool", "module", args[1], *args[2:]]
+        else:
+            cmd = [sys.executable, "--run-tool", "path", *args]
+    else:
+        cmd = [sys.executable, *args]
     try:
-        p = subprocess.run([sys.executable, *args], cwd=str(TOOLKIT), env=_env(body),
+        p = subprocess.run(cmd, cwd=str(TOOLKIT), env=_env(body),
                            capture_output=True, text=True, timeout=timeout)
         return p.returncode, p.stdout.strip(), p.stderr.strip()
     except subprocess.TimeoutExpired:

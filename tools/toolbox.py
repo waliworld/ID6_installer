@@ -49,15 +49,44 @@ try:
 except ImportError:
     app_installer = None
 import hu_platform
+try:
+    import enet
+except ImportError:
+    enet = None
 
 from types import SimpleNamespace
 
 
+def discover(_body: dict):
+    if enet is None:
+        return {"Result": "Discovery unavailable; type both ENET IPs manually."}
+    return enet.discover(_body)
+
+
+def inspect(body: dict) -> dict:
+    """Identify the connected unit for the wizard (adapts the apps compat read)."""
+    if app_installer is None:
+        return {"Result": "Identify backend unavailable."}
+    c = app_installer.compat(body)
+    return {
+        "Version": c.get("Firmware"),
+        "Display": c.get("Display"),
+        "Ready": bool(c.get("Ok")),
+        "Platform": c.get("Platform"),
+        "Result": c.get("Result", ""),
+    }
+
+
 def _py(script: Path, args: list[str], timeout: int):
-    """Run a bundled python tool isolated (-I). Returns (rc, stdout, stderr)."""
+    """Run a bundled python tool. Returns (rc, stdout, stderr). In a frozen
+    (PyInstaller) build there is no python interpreter, so re-invoke the app
+    itself with --run-tool; otherwise run the script with the real python."""
+    if getattr(sys, "frozen", False):
+        cmd = [sys.executable, "--run-tool", "path", str(script), *args]
+    else:
+        cmd = [PY, "-I", str(script), *args]
     try:
-        p = subprocess.run([PY, "-I", str(script), *args],
-                           capture_output=True, text=True, timeout=timeout)
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         return p.returncode, p.stdout, p.stderr
     except subprocess.TimeoutExpired:
         return 124, "", "timed out"
@@ -198,6 +227,9 @@ def addon_status(body: dict) -> dict:
 
 OPS = {
     "selfcheck": selfcheck,
+    "discover": discover,
+    "inspect": inspect,
+    "quit": lambda b: {"Result": "closing"},
     "unlock": unlock,
     "carplay": carplay,
     "carplay-activate": carplay_activate,
