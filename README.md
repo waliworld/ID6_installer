@@ -82,18 +82,24 @@ The wizard degrades gracefully: any stage whose backend isn't present shows a cl
 
 A car can pass one and not the other; Identify surfaces both before anything is flashed.
 
-## Building the installer (shop side)
+## Running it
 
-Clients just run the `.exe` / `.app`. To build it: **Go 1.27.3**, the private QNX
-`payload/` (the compiled gauge apps — not in this public repo; see `source/docs/BUILD.md`),
-and Python 3 + OpenSSH present at runtime for the SSH/identify stages. Then:
+**It's one program now — pure Python, no build step.** See [HOW_TO_RUN.md](HOW_TO_RUN.md).
 
-```sh
-cd source
-./build-release.sh        # Windows x64 + universal macOS zips, with SHA-256 sums
-```
+- **End users:** download the double-click program from the **Releases** page
+  (`…-windows-x64.exe` / `…-macos`) — no Python needed — and run it. The toolbox opens
+  in the browser.
+- **From source:** double-click `Start Toolbox (Windows).bat` / `Start Toolbox (Mac).command`,
+  or run `python app.py`. The compiled app payloads are vendored in `packages/`, so there's no
+  separate payload to obtain. OpenSSH (built into Windows 10/11 and macOS) is the only system
+  requirement.
 
-Preview the UI without a car: `cd source && go run . -no-browser`.
+The release executables are built automatically by CI on real Windows/macOS runners
+(`.github/workflows/release.yml` + `packaging/toolbox.spec`) whenever a version tag is pushed,
+bundling Python + the UI + backend + `packages/` + the toolkit into one file.
+
+> The older Go server (`source/*.go`) is superseded by `app.py` and kept only for reference;
+> the app no longer needs Go or a compile step.
 
 ## Safety & authorization
 
