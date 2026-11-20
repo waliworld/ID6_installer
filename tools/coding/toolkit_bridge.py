@@ -48,9 +48,12 @@ def _env(body: dict | None = None) -> dict:
 
 def _run(args: list[str], timeout=60, body: dict | None = None):
     # Frozen build: re-invoke the app with --run-tool (no python interpreter present).
+    # Resolve `-m a.b.c` to the toolkit file and run it by path (more robust than
+    # run_module inside a frozen app).
     if getattr(sys, "frozen", False):
         if args and args[0] == "-m":
-            cmd = [sys.executable, "--run-tool", "module", args[1], *args[2:]]
+            modfile = str(TOOLKIT / (args[1].replace(".", "/") + ".py"))
+            cmd = [sys.executable, "--run-tool", "path", modfile, *args[2:]]
         else:
             cmd = [sys.executable, "--run-tool", "path", *args]
     else:

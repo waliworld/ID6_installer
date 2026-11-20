@@ -1,12 +1,15 @@
-name: Build toolbox executables
+name: Build client program
 
-# Produces the double-click programs end users download. Runs on real Windows
-# and macOS machines, so these are genuine native executables that need no
-# Python install. Triggered by pushing a version tag (e.g. v0.3.0) or manually.
+# Produces the standalone double-click programs (no Python needed by clients).
+#
+# TWO WAYS TO RUN THIS, both from your browser - no command line:
+#   1. Actions tab -> "Build client program" -> "Run workflow".  When it finishes,
+#      open the run and download the .exe from the "Artifacts" section.
+#   2. Publish a version tag (e.g. v0.3.0) to also attach the files to a Release.
 on:
+  workflow_dispatch:
   push:
     tags: ["v*"]
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -18,11 +21,11 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            artifact: TunedByWali-NBT-Toolbox-windows-x64.exe
-            built: dist/TunedByWali-NBT-Toolbox.exe
+            out: TunedByWali-NBT-Toolbox.exe
+            asset: TunedByWali-NBT-Toolbox-windows-x64.exe
           - os: macos-latest
-            artifact: TunedByWali-NBT-Toolbox-macos
-            built: dist/TunedByWali-NBT-Toolbox
+            out: TunedByWali-NBT-Toolbox
+            asset: TunedByWali-NBT-Toolbox-macos
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -32,14 +35,26 @@ jobs:
       - name: Install PyInstaller
         run: python -m pip install --upgrade pip pyinstaller
       - name: Build
-        run: pyinstaller packaging/toolbox.spec
-      - name: Rename artifact
+        run: pyinstaller --noconfirm packaging/toolbox.spec
+      - name: Smoke test (it starts and serves)
         shell: bash
-        run: cp "${{ matrix.built }}" "${{ matrix.artifact }}"
-      - uses: actions/upload-artifact@v4
+        run: |
+          "dist/${{ matrix.out }}" --no-browser --port 8799 &
+          PID=$!
+          sleep 8
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8799/ || echo 000)
+          curl -s -X POST http://127.0.0.1:8799/quit -d '{}' || true
+          kill $PID 2>/dev/null || true
+          echo "HTTP $code"
+          test "$code" = "200"
+      - name: Name the artifact
+        shell: bash
+        run: cp "dist/${{ matrix.out }}" "${{ matrix.asset }}"
+      - name: Upload downloadable artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: ${{ matrix.artifact }}
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}
 
   release:
     needs: build
@@ -49,12 +64,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
-      - name: Publish to the release
-        uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2
         with:
           files: artifacts/**/*
           body: |
             Double-click programs for the TunedByWali NBT Evo Toolbox — no Python needed.
             - Windows: download the `.exe`, double-click, allow it past SmartScreen (unsigned).
             - macOS: download, right-click → Open the first time (unsigned).
-            OpenSSH is the only system requirement (built into Windows 10/11 and macOS).
+            OpenSSH (built into Windows 10/11 and macOS) is the only requirement.
