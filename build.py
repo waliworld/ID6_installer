@@ -19,7 +19,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-VERSION = "v0.3.0"
+VERSION = "v0.4.0"
 DIST = ROOT / "dist"
 
 # What the running app needs on disk (the Go sources are not used by app.py).
