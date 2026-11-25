@@ -26,7 +26,7 @@ supported**, decided before anything touches EnergyMode.
 THE ONE RULE
 ------------
 A build letter can only ever DENY. It can never ALLOW.
-Only a confirmed software line (e.g. `007_001_049`) can ALLOW. If we cannot
+Only a confirmed software line (e.g. `007_051_002`) can ALLOW. If we cannot
 prove the line, the answer is DENY-UNKNOWN and the operator must read it from
 E-Sys / ISTA and pass it in.
 """
@@ -50,29 +50,50 @@ BUILD_RE = re.compile(r"^(?P<letter>[A-Z])(?P<yy>\d{2})(?P<ddd>\d{3})(?P<rev>[A-
 # Firmware builds we have real evidence for. `line` is the HMI / software line;
 # None means "we do not know it" -- which is NOT the same as unsupported, it
 # means unprovable from the build code alone and therefore DENY for flashing.
+#
+# NOTE ON LETTERS: build letters are NOT monotonic with the software line.
+# P and Q are 006_xxx while S, U, V, X and Y are all 007_xxx, and the Y branch
+# alone spans 007_039 through 007_051. So a letter on its own proves almost
+# nothing -- only the full build code (or the line itself) decides.
+#
 FIRMWARE_DB: dict[str, dict] = {
-    # --- iDrive 4 era (001_xxx). The flasher calls these out by name as unsafe.
-    "E16382A": {"line": "001_056_001", "istep": "ID4", "source": "published version table"},
-    "E17235A": {"line": "001_060_001", "istep": "ID4", "source": "published version table"},
-    # --- iDrive 5/6
-    "H16205L": {"line": None, "istep": "16.07", "source": "published version table"},
-    "H16261I": {"line": None, "istep": "16.07", "source": "published version table"},
-    "J16383I": {"line": "005_002_016", "istep": "16.11", "source": "published version table"},
-    "K17052I": {"line": "005_012_001", "istep": "17.03", "source": "published version table"},
-    "N18032I": {"line": "006_016_002", "istep": "18.03", "source": "published version table"},
-    "N18092I": {"line": "006_017_006", "istep": "18.xx", "source": "published version table"},
-    # --- in our app-installer PROFILES but with no confirmed software line
-    "P18362I": {"line": None, "istep": None, "source": "app_installer PROFILES"},
-    "V20153I": {"line": None, "istep": None, "source": "app_installer PROFILES"},
-    "Y24073J": {"line": None, "istep": "24.0x", "source": "app_installer PROFILES; observed on a 2020 F97 X3M",
-                "note": "BMW's current NBT Evo branch (PSdZData 4.35+ ships NBTevo_Y). "
-                        "Generations past the 007.xxx family."},
+    # --- iDrive 4 era (001_xxx). The flasher names these as unsafe.
+    "E16382A": {"line": "001_056_001", "istep": "ID4"},
+    "E17235A": {"line": "001_060_001", "istep": "ID4"},
+    # --- 005_xxx
+    "H16205L": {"line": None, "istep": "16.07"},
+    "H16261I": {"line": None, "istep": "16.07"},
+    "J16383I": {"line": "005_002_016", "istep": "16.11"},
+    "K17052I": {"line": "005_012_001", "istep": "17.03"},
+    # --- 006_xxx
+    "N18032I": {"line": "006_016_002", "istep": "18.03"},
+    "N18092I": {"line": "006_017_006", "istep": "18.03"},
+    "P18362I": {"line": "006_027_001", "istep": "18.11"},
+    "Q18491I": {"line": "006_032_012", "istep": "18.11"},
+    # --- 007_xxx  <- the family the OPT_DEBUG container fits
+    "S19221I": {"line": "007_001_016", "istep": "19.11"},
+    "U19384I": {"line": "007_007_008", "istep": "19.11"},
+    "V20153I": {"line": "007_020_010", "istep": "20.07"},
+    "X20511I": {"line": "007_030_001", "istep": "21.03"},
+    "Y21432J": {"line": "007_039_008", "istep": "21.11"},
+    "Y22292I": {"line": "007_047_001", "istep": "22.11"},
+    "Y23236I": {"line": "007_049_001", "istep": "22.11"},
+    "Y24073J": {"line": "007_051_002", "istep": "24.07",
+                "note": "This is the flasher's own REFERENCE BUILD (007.051.002)."},
 }
+for _b, _d in FIRMWARE_DB.items():
+    _d.setdefault("source", "published version table")
 
 # The OPT_DEBUG container is byte-identical across the whole 007.xxx family.
 # Verified members, per the flasher header.
+# The flasher header's shorthand "007_001_016 / 030 / 039 / 049 / 051" names the
+# MIDDLE group, i.e. these five real builds:
 OPTDEBUG_VERIFIED_LINES = {
-    "007_001_016", "007_001_030", "007_001_039", "007_001_049", "007_001_051",
+    "007_001_016",   # S19221I
+    "007_030_001",   # X20511I
+    "007_039_008",   # Y21432J
+    "007_049_001",   # Y23236I
+    "007_051_002",   # Y24073J  <- the reference build itself
 }
 OPTDEBUG_REFERENCE = "007.051.002"
 
@@ -80,12 +101,16 @@ OPTDEBUG_REFERENCE = "007.051.002"
 # Kept in sync with tools/apps/app_installer.py PROFILES.
 APPS_PROFILE_BUILDS = {"N18032I", "N18092I", "P18362I", "V20153I", "Y24073J"}
 
-# A build letter alone can only DENY. Letters at or past this point are so far
-# beyond the 007 family that we reject without needing the line.
-# N is confirmed 006_xxx, so anything after N cannot be 007-and-earlier... but
-# 007 itself must come AFTER N. So letters are only decisive at the extremes.
-IDRIVE4_LETTERS = set("ABCDEF")          # ID4 -- never a target for any style here
-DEFINITELY_POST_007 = set("STUVWXY")     # 2020+ branches, far past the 007 family
+# A-F are iDrive 4 -- the one case a bare letter is decisive, and it only DENIES.
+# There is deliberately no "too new" letter set: letters do not order by line
+# (see the note on FIRMWARE_DB), and an earlier version of this gate wrongly
+# blocked S/U/V/X/Y -- which are exactly the 007_xxx family that IS supported.
+IDRIVE4_LETTERS = set("ABCDEF")
+
+
+def builds_for_letter(letter: str | None) -> list[str]:
+    """Every known build code on a given branch letter."""
+    return sorted(b for b in FIRMWARE_DB if letter and b.startswith(letter))
 
 
 def parse_build(raw: str | None) -> dict:
@@ -132,7 +157,7 @@ def normalize_line(line: str | None) -> str | None:
 
 
 def line_family(line: str | None) -> str | None:
-    """'007_001_049' -> '007'."""
+    """'007_051_002' -> '007'."""
     n = normalize_line(line)
     return n.split("_")[0] if n else None
 
@@ -167,13 +192,6 @@ def _gate_optdebug(ctx: dict) -> dict:
                      "The flasher header names 001_05x explicitly as a DO-NOT-FLASH line. "
                      "Upgrade the unit to ID5/ID6 first.")
 
-    if letter and letter in DEFINITELY_POST_007:
-        extra = FIRMWARE_DB.get(build, {}).get("note", "")
-        return _deny("POST_007_BRANCH",
-                     "Build letter %s is generations past the 007.xxx family this flash fits.%s"
-                     % (letter, (" " + extra) if extra else ""),
-                     "Do not flash. A wrong-version starter.cfg fails the next boot.")
-
     if line:
         fam = line_family(line)
         if fam == "007":
@@ -192,11 +210,25 @@ def _gate_optdebug(ctx: dict) -> dict:
                      "Software line %s is family %s; this flash fits only 007.xxx." % (line, fam),
                      "Do not flash. A wrong-version starter.cfg fails the next boot.")
 
+    # Only a bare letter, or a build code we have never seen.
+    hint = ""
+    if letter:
+        known = builds_for_letter(letter)
+        if known:
+            fams = {line_family(FIRMWARE_DB[b]["line"]) for b in known if FIRMWARE_DB[b]["line"]}
+            if fams == {"007"}:
+                hint = (" Every known %s build is in the 007.xxx family (%s), so this unit is "
+                        "probably supported -- but the exact build decides, and letters do not "
+                        "order by line." % (letter, ", ".join(known)))
+            elif fams:
+                hint = (" Known %s builds span %s, so the letter alone cannot decide."
+                        % (letter, "/".join(sorted(f + "_xxx" for f in fams))))
     return _deny("UNKNOWN_LINE",
-                 "Could not prove the unit's software line%s."
-                 % (" (build %s has no confirmed line in our table)" % build if build else ""),
-                 "Read the software line from E-Sys / ISTA (the SVK) and pass it in, "
-                 "e.g. --line 007_001_049. The gate refuses anything it cannot prove.")
+                 "Could not prove the unit's software line%s.%s"
+                 % (" (build %s is not in our table)" % build if build else "", hint),
+                 "Give the full build string from the car's screen (--firmware NBTevo_Y24073J), "
+                 "or the software line from E-Sys/ISTA (--line 007_051_002). The gate refuses "
+                 "anything it cannot prove.")
 
 
 def _gate_entrynav2(ctx: dict) -> dict:
@@ -267,7 +299,7 @@ def check(style: str, firmware: str | None = None, line: str | None = None,
 
     firmware -- the string off the car's screen, e.g. 'NBTevo_Y24073J'
                 (Navigation -> Options -> Settings -> Position & Version)
-    line     -- the software line from E-Sys / ISTA, e.g. '007_001_049'. Authoritative.
+    line     -- the software line from E-Sys / ISTA, e.g. '007_051_002'. Authoritative.
     platform -- 'nbt_evo' | 'entrynav2' if already detected.
     """
     spec = STYLES.get(style)
@@ -313,7 +345,7 @@ def matrix(firmware: str | None = None, line: str | None = None,
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Pre-flight compatibility gate for the SSH / install styles.")
     ap.add_argument("--firmware", help="build string off the car's screen, e.g. NBTevo_Y24073J")
-    ap.add_argument("--line", help="software line from E-Sys/ISTA, e.g. 007_001_049 (authoritative)")
+    ap.add_argument("--line", help="software line from E-Sys/ISTA, e.g. 007_051_002 (authoritative)")
     ap.add_argument("--platform", choices=["nbt_evo", "entrynav2"])
     ap.add_argument("--style", help="check one style only")
     ap.add_argument("--json", action="store_true")

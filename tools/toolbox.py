@@ -258,7 +258,7 @@ def addon_status(body: dict) -> dict:
 def gate_check(body: dict) -> dict:
     """Which rooting / install styles are valid for THIS unit?
 
-    body: {Firmware: 'NBTevo_Y24073J', Line: '007_001_049', Platform, Style}
+    body: {Firmware: 'NBTevo_Y24073J', Line: '007_051_002', Platform, Style}
     With no Style, returns the full matrix - the 'what can I safely run here'
     answer a tech needs before touching the car.
     """

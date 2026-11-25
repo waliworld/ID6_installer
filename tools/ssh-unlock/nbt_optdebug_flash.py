@@ -604,7 +604,7 @@ def _tbw_preflight(a):
         print("\nTo proceed, supply proof of the unit's software version:")
         print("  --firmware NBTevo_XXXXXXX   read off the car: Navigation > Options >")
         print("                              Settings > Position & Version")
-        print("  --line 007_001_049          from E-Sys/ISTA (the SVK). Authoritative.")
+        print("  --line 007_051_002          from E-Sys/ISTA (the SVK). Authoritative.")
         raise SystemExit(2)
 
 
@@ -627,7 +627,7 @@ def main():
                     help="TBW: build string off the car's screen (Navigation > Options > Settings > "
                          "Position & Version), e.g. NBTevo_P18362I")
     ap.add_argument("--line", default=None,
-                    help="TBW: software line from E-Sys/ISTA (SVK), e.g. 007_001_049. Authoritative.")
+                    help="TBW: software line from E-Sys/ISTA (SVK), e.g. 007_051_002. Authoritative.")
     ap.add_argument("--force-unsupported", action="store_true",
                     help="TBW: override the pre-flight gate. DANGEROUS -- a wrong-version "
                          "starter.cfg fails the NEXT boot.")

@@ -18,16 +18,45 @@ python tools/ssh_gate.py --firmware NBTevo_Y24073J
 | `entrynav2_root` | EntryNav2 root — root password + remount `/` | no | EntryNav2 / EntryEVO. No firmware-line constraint (nothing is flashed) |
 | `apps_install` | Gauge-app install over SSH | no | Builds with known-good framework hashes: `N18032I`, `N18092I`, `P18362I`, `V20153I`, `Y24073J` — **and SSH must already be open** |
 
-### The trap this exists to prevent
+## The full version table
 
-`Y24073J` is in the **app installer's** known-good profiles but is **generations
-past** the family the SSH unlock can root. Before the gate, the program would
-tell a tech "this firmware is supported" (true — for installing apps onto an
-already-rooted unit) while the unlock that has to run first could not root it.
+**Build letters do not order by software line.** P and Q are `006_xxx` while S,
+U, V, X and Y are all `007_xxx`, and the Y branch alone spans `007_039` through
+`007_051`. A letter on its own proves almost nothing — only the full build code,
+or the line itself, decides.
 
-A unit being listed under `apps_install` says **nothing** about whether
-`nbt_optdebug` can root it. Check each style separately. The gate does this for
-you and prints both verdicts.
+| Build | Software line | I-Step | SSH unlock |
+|---|---|---|---|
+| `E16382A` | `001_056_001` | ID4 | no — iDrive 4 |
+| `E17235A` | `001_060_001` | ID4 | no — iDrive 4 |
+| `H16205L` | — | 16.07 | unknown |
+| `H16261I` | — | 16.07 | unknown |
+| `J16383I` | `005_002_016` | 16.11 | no |
+| `K17052I` | `005_012_001` | 17.03 | no |
+| `N18032I` | `006_016_002` | 18.03 | no |
+| `N18092I` | `006_017_006` | 18.03 | no |
+| `P18362I` | `006_027_001` | 18.11 | no |
+| `Q18491I` | `006_032_012` | 18.11 | no |
+| `S19221I` | `007_001_016` | 19.11 | **yes — verified** |
+| `U19384I` | `007_007_008` | 19.11 | yes — family |
+| `V20153I` | `007_020_010` | 20.07 | yes — family |
+| `X20511I` | `007_030_001` | 21.03 | **yes — verified** |
+| `Y21432J` | `007_039_008` | 21.11 | **yes — verified** |
+| `Y22292I` | `007_047_001` | 22.11 | yes — family |
+| `Y23236I` | `007_049_001` | 22.11 | **yes — verified** |
+| `Y24073J` | `007_051_002` | 24.07 | **yes — the reference build** |
+
+*verified* = one of the five builds the flasher header names explicitly
+(`007_001_016 / 030 / 039 / 049 / 051` — that shorthand is the **middle** group).
+*family* = in `007.xxx`, where the container is byte-identical, but not on that
+explicit list.
+
+### Still check each style separately
+
+A unit listed under `apps_install` says nothing on its own about whether
+`nbt_optdebug` can root it. `N18092I` and `P18362I` have known-good gauge
+profiles but are `006_xxx` and cannot be rooted by this flash. The gate prints
+both verdicts so you never have to infer one from the other.
 
 ## Why the gate refuses by default
 
@@ -45,7 +74,7 @@ flash mode went on *before* the version was known.
 **This gate inverts that.** It decides before anything touches EnergyMode:
 
 - a build letter can only ever **DENY**, never ALLOW
-- only a confirmed **software line** (e.g. `007_001_049`) can ALLOW
+- only a confirmed **software line** (e.g. `007_051_002`) can ALLOW
 - cannot prove the line → **DENY**, and say how to prove it
 
 So the unlock no longer runs blind. A tech who supplies nothing gets a refusal
@@ -64,7 +93,7 @@ built day 073 of 2024.
 itself, which is the only thing the gate will accept as proof:
 
 ```sh
-python tools/ssh-unlock/nbt_optdebug_flash.py --commit --line 007_001_049
+python tools/ssh-unlock/nbt_optdebug_flash.py --commit --line 007_051_002
 ```
 
 Known letter → line mappings are in `FIRMWARE_DB` in `tools/ssh_gate.py`.
