@@ -80,7 +80,39 @@ The wizard degrades gracefully: any stage whose backend isn't present shows a cl
 - **SSH unlock** supports the **`007.xxx`** starter.cfg family (not `001_05x`).
 - **Gauge install** supports specific HMI builds (`NBTevo_N18092I / V20153I / Y24073J`).
 
-A car can pass one and not the other; Identify surfaces both before anything is flashed.
+A car can pass one and not the other — and **a firmware listed as good for gauge apps says
+nothing about whether the unlock can root it.** Those are different questions.
+
+This is now **enforced, not just surfaced**. A pre-flight gate decides *before* anything
+touches the unit, and refuses unless the car is positively proven supported:
+
+- a build letter can only ever **deny**, never allow
+- only a confirmed software line (e.g. `007_001_049`) can **allow**
+- can't prove the line → **refused**, with instructions on how to prove it
+
+"Enable SSH" will not arm until the compatibility check passes. Check any car in advance:
+
+```sh
+python tools/ssh_gate.py --firmware NBTevo_Y24073J
+```
+
+Read your unit's version off the car in about ten seconds:
+**Navigation → Options → Settings → Position & Version → Version information.**
+
+Full support matrix and the reasoning: [docs/SSH_STYLES.md](docs/SSH_STYLES.md).
+
+## Recovery — head unit dark after an aborted flash
+
+A unit that aborted mid-unlock can be left latched in flash mode, which is the documented
+cause of a black screen. The **Recovery** panel in the app (or `tools/ssh-unlock/nbt_recover.py`)
+diagnoses it. **Scan is read-only** — it writes nothing to the unit and loads no flash
+containers — and tells you which of three situations you're in: latched, already clean, or
+off the bus entirely.
+
+If Scan reports the registers already clean, the latch isn't the cause and this tool can't fix
+the screen — the unit needs an E-Sys reflash. Do **not** reach for `--revert` to fix a dark
+screen: it goes through the same flash-mode entry that failed. See
+[docs/SSH_STYLES.md](docs/SSH_STYLES.md#recovery-dark-screen-after-an-aborted-flash).
 
 ## Running it
 
