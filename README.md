@@ -87,7 +87,7 @@ This is now **enforced, not just surfaced**. A pre-flight gate decides *before* 
 touches the unit, and refuses unless the car is positively proven supported:
 
 - a build letter can only ever **deny**, never allow
-- only a confirmed software line (e.g. `007_001_049`) can **allow**
+- only a confirmed software line (e.g. `007_051_002`) can **allow**
 - can't prove the line → **refused**, with instructions on how to prove it
 
 "Enable SSH" will not arm until the compatibility check passes. Check any car in advance:
