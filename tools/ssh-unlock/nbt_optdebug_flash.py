@@ -555,6 +555,59 @@ def selftest():
     print("[selftest] %s" % ("ALL PASS" if ok else "FAILURES PRESENT"))
     return ok
 
+def _tbw_gate_check(firmware, line):
+    """TBW addition. Load tools/ssh_gate.py and run the nbt_optdebug policy.
+
+    Always returns a verdict dict. If the gate module cannot be loaded we return
+    a DENY rather than silently reverting to upstream's unguarded behaviour: a
+    missing gate means a broken install, and this flash can brick a unit.
+    """
+    import importlib.util
+    import os
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ssh_gate.py")
+    try:
+        spec = importlib.util.spec_from_file_location("tbw_ssh_gate", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.check("nbt_optdebug", firmware=firmware, line=line)
+    except Exception as e:
+        return {"Decision": "DENY", "Allowed": False, "Code": "GATE_UNAVAILABLE",
+                "Reason": "Pre-flight gate could not be loaded from %s (%s)." % (path, e),
+                "NextStep": "Restore tools/ssh_gate.py. Refusing to flash without a version check.",
+                "Firmware": firmware, "Line": line, "LineSource": "n/a"}
+
+
+def _tbw_preflight(a):
+    """TBW addition. Decide BEFORE anything touches EnergyMode.
+
+    Upstream enters flash mode first (`31 01 0F0C 03`) and only then discovers
+    that the software line is wrong -- at which point the HU is already in flash
+    mode, and a failed exit leaves it on a black screen (upstream issue #3).
+    That is an ORDERING bug, so this runs first and can stop the run.
+    """
+    gate = _tbw_gate_check(a.firmware, a.line)
+    print("\n--- pre-flight gate ---")
+    print("  firmware : %s" % (gate.get("Firmware") or "(not supplied)"))
+    print("  line     : %s  (%s)" % (gate.get("Line") or "unknown", gate.get("LineSource")))
+    print("  decision : %s  [%s]" % (gate["Decision"], gate["Code"]))
+    print("  %s" % gate["Reason"])
+    print("  -> %s" % gate["NextStep"])
+    if gate["Allowed"]:
+        return
+    if a.force_unsupported:
+        print("\n  *** --force-unsupported given: PROCEEDING ANYWAY. ***")
+        print("  *** A wrong-version starter.cfg FAILS THE NEXT BOOT. ***")
+        return
+    if a.commit:
+        print("\n=== REFUSED BY PRE-FLIGHT GATE -- nothing transmitted, HU untouched. ===")
+        print("The unit was never put into flash mode, so there is nothing to recover from.")
+        print("\nTo proceed, supply proof of the unit's software version:")
+        print("  --firmware NBTevo_XXXXXXX   read off the car: Navigation > Options >")
+        print("                              Settings > Position & Version")
+        print("  --line 007_001_049          from E-Sys/ISTA (the SVK). Authoritative.")
+        raise SystemExit(2)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Standalone OPT_DEBUG enable flash for the NBT-Evo HU (dry-run default).")
     ap.add_argument("--host", default=None, help="gateway HSFZ host (default: 6811 auto-discover, else %s)" % DIAG_EDGE)
@@ -569,6 +622,16 @@ def main():
     ap.add_argument("--tp-period", type=float, default=None)
     ap.add_argument("--no-discover", action="store_true", help="skip 6811 discovery; use --host/%s" % DIAG_EDGE)
     ap.add_argument("--selftest", action="store_true", help="offline self-check (no car) and exit")
+    # ---- TBW pre-flight gate (addition over upstream) ----------------------
+    ap.add_argument("--firmware", default=None,
+                    help="TBW: build string off the car's screen (Navigation > Options > Settings > "
+                         "Position & Version), e.g. NBTevo_P18362I")
+    ap.add_argument("--line", default=None,
+                    help="TBW: software line from E-Sys/ISTA (SVK), e.g. 007_001_049. Authoritative.")
+    ap.add_argument("--force-unsupported", action="store_true",
+                    help="TBW: override the pre-flight gate. DANGEROUS -- a wrong-version "
+                         "starter.cfg fails the NEXT boot.")
+    # ------------------------------------------------------------------------
     a = ap.parse_args()
 
     if a.selftest:
@@ -594,6 +657,10 @@ def main():
     print("container : %d bytes -> %s  [%s]" % (len(img), tgt, "LIVE-DIRECT" if is_live else "STAGING"))
     print("gateway   : %s:%d   LBN=0x%X   controller=%s" % (host, a.port, lbn, controller.hex()))
     print("VERSION   : container is 007.051.002 (== whole 007.xxx family). Do NOT use on a 001_05x unit.")
+
+    # TBW: runs BEFORE the HSFZ connect and before STEP 2 ActivateFlashMode.
+    # On a --commit this can raise SystemExit(2) and nothing is transmitted.
+    _tbw_preflight(a)
 
     if not a.commit:
         print("\nDRY-RUN (no --commit) — transmitting nothing. Planned sequence:")

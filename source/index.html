@@ -181,6 +181,16 @@ output{display:block;min-height:2.6rem;white-space:pre-wrap;overflow-wrap:anywhe
   <div class="primary-row">
     <button type="button" id="selftest" class="secondary"><span class="spin"></span><span>Run offline self-test</span></button>
   </div>
+  <div class="grid" style="margin-top:4px">
+    <label>Software version <small>(on the car: Navigation › Options › Settings › Position &amp; Version)</small>
+      <input id="GateFirmware" placeholder="NBTevo_P18362I" autocomplete="off"></label>
+    <label>Software line <small>(from E-Sys/ISTA SVK — authoritative)</small>
+      <input id="GateLine" placeholder="007_001_049" autocomplete="off"></label>
+  </div>
+  <div class="primary-row">
+    <button type="button" id="gate-check" class="secondary"><span class="spin"></span><span>Check compatibility</span></button>
+  </div>
+  <div id="gate-result" hidden class="callout"></div>
   <label class="check"><input type="checkbox" id="riskack"> I confirm this is an NBT Evo 007.xxx unit I'm authorized to modify.</label>
   <div class="grid" style="margin-top:4px">
     <label>Type <strong>UNLOCK</strong> to confirm <input id="confirmunlock" placeholder="UNLOCK" autocomplete="off" aria-describedby="ch"></label>
@@ -310,6 +320,19 @@ output{display:block;min-height:2.6rem;white-space:pre-wrap;overflow-wrap:anywhe
   </div>
 </section>
 
+<!-- RECOVERY -->
+<section id="sec-recover" data-platform="nbt_evo">
+  <span class="eyebrow">Recovery</span>
+  <h2>Dark screen after an aborted flash</h2>
+  <p class="sub">If an unlock aborted and the screen stayed black, the flasher may have left the unit latched in flash mode — the documented cause of a black screen on these units. <strong>Scan is read-only</strong>: it reads the flash-state registers and fault memory and tells you whether that latch is the live problem. It writes nothing and loads no flash containers.</p>
+  <div class="callout">If Scan reports the registers already <strong>clean</strong>, the latch is not the cause and this tool cannot fix it — the unit needs an E-Sys reflash (BTLD + SWFL + CAFD, skipping ibaDeploy), with PSdZData current enough for its software line.</div>
+  <div class="primary-row">
+    <button type="button" id="hu-scan" class="secondary"><span class="spin"></span><span>Scan (read-only)</span></button>
+    <button type="button" id="hu-clear" class="danger"><span class="spin"></span><span>Clear latched state &amp; reset</span></button>
+  </div>
+  <p class="hint">Clear runs the same tested teardown the flasher uses, resets the unit, then waits ~60s and re-reads. It writes no files to the head unit.</p>
+</section>
+
 <!-- STATUS -->
 <section>
   <div class="status-head"><span class="eyebrow">Status</span><span class="pill" id="pill">Not connected</span></div>
@@ -327,7 +350,7 @@ output{display:block;min-height:2.6rem;white-space:pre-wrap;overflow-wrap:anywhe
 const $=id=>document.getElementById(id);
 const fields=["Head","Gateway","Version"];
 let local="", detected=[], fingerprint="", busy=false;
-const state={sshOn:false, identified:false, ready:false, platform:"unknown", vin:""};
+const state={sshOn:false, identified:false, ready:false, platform:"unknown", vin:"", gateOk:false};
 
 function setPill(k,t){const p=$("pill");p.dataset.k=k;p.textContent=t;}
 function stepState(id,s){$(id).dataset.state=s;}
@@ -349,13 +372,15 @@ function phase(){
   if(state.identified){ stepState("st4", state.ready?"active":""); stepState("st5","active"); stepState("st6","active"); }
 }
 function controls(){
-  for(const id of ["find","selftest","inspect","recover","carplay","revert","quit","display-settings","apps-load"]) if($(id)) $(id).disabled=busy;
-  $("unlock").disabled = busy || !($("riskack").checked && $("confirmunlock").value.trim().toUpperCase()==="UNLOCK");
+  for(const id of ["find","selftest","inspect","recover","carplay","revert","quit","display-settings","apps-load","gate-check","hu-scan","hu-clear"]) if($(id)) $(id).disabled=busy;
+  // The flash cannot be armed until the pre-flight gate has positively passed.
+  $("unlock").disabled = busy || !state.gateOk || !($("riskack").checked && $("confirmunlock").value.trim().toUpperCase()==="UNLOCK");
   $("apps-go").disabled = busy || !state.ready || !document.querySelector("#app-list input:checked");
   for(const id of ["find","selftest","unlock","inspect","apps-load","apps-go","carplay","revert","recover","quit"]){const b=$(id); if(b) b.dataset.busy=(busy&&!b.disabled)?"true":"false";}
   phase();
 }
-function resetFromIPs(){ state.sshOn=false; state.identified=false; state.ready=false; state.platform="unknown"; applyPlatform();
+function resetFromIPs(){ state.sshOn=false; state.identified=false; state.ready=false; state.platform="unknown"; state.gateOk=false; applyPlatform();
+  if($("gate-result")) $("gate-result").hidden=true;
   fingerprint=""; $("trust").hidden=true; $("Fingerprint").value=""; $("idcard").hidden=true;
   $("lock-recovery").hidden=true; $("inspect").querySelector("span:last-child").textContent="Identify unit"; controls(); }
 for(const f of fields) $(f).addEventListener("input",()=>{ if(f==="Head"||f==="Gateway"){local="";resetFromIPs();} controls(); });
@@ -404,10 +429,38 @@ $("selftest").onclick=async()=>{
   }catch(e){ if(e.message==="__NO_ENDPOINT__")return endpointMissing("The SSH self-test"); setPill("bad","Error");$("status").textContent=e.message; }
 };
 
+// ---- pre-flight gate: nothing can be flashed until this positively passes ----
+for(const f of ["GateFirmware","GateLine"]) $(f).addEventListener("input",()=>{
+  state.gateOk=false; $("gate-result").hidden=true; controls();
+});
+
+$("gate-check").onclick=async()=>{
+  const fw=$("GateFirmware").value.trim(), line=$("GateLine").value.trim();
+  setPill("run","Checking");$("status").textContent="Checking which install styles this unit supports…";
+  try{
+    const r=await request("gate-check",{Firmware:fw,Line:line,Platform:state.platform==="unknown"?"":state.platform});
+    const rows=r.Summary||[]; const flash=rows.find(s=>s.Style==="nbt_optdebug");
+    state.gateOk = !!(flash&&flash.Allowed);
+    const box=$("gate-result"); box.hidden=false;
+    box.className = "callout" + (state.gateOk?"":" danger");
+    box.textContent = rows.map(s=>(s.Allowed?"ALLOWED  ":"BLOCKED  ")+s.Label+(s.WritesFlash?"  [writes flash]":"")+"\n   "+s.Reason+"\n   → "+s.NextStep).join("\n\n");
+    setPill(state.gateOk?"ok":"bad", state.gateOk?"Compatible":"Not compatible");
+    $("status").textContent = state.gateOk
+      ? "Pre-flight gate passed — the SSH unlock is safe to arm on this unit."
+      : (flash?flash.Reason:"This unit is not supported by the OPT_DEBUG unlock.")
+        +"\n\nEnable SSH stays locked. Nothing has been sent to the car.";
+  }catch(e){ if(e.message==="__NO_ENDPOINT__")return endpointMissing("Compatibility check");
+    state.gateOk=false; setPill("bad","Error");$("status").textContent=e.message; }
+  finally{controls();}
+};
+
 $("unlock").onclick=async()=>{
+  if(!state.gateOk){ setPill("bad","Blocked"); $("status").textContent="Run the compatibility check first — the unlock will not arm until it passes."; return; }
   if(!confirm("Flash OPT_DEBUG to enable SSH? This writes to the head unit's live partition. Only proceed on an NBT Evo 007.xxx unit."))return;
   setPill("run","Enabling SSH");$("status").textContent="Flashing and waiting for the head unit to reboot (~50s). Do not disconnect the cable or power off iDrive.";
-  try{ const r=await request("unlock",{commit:true,Gateway:$("Gateway").value.trim(),Head:$("Head").value.trim(),Local:local});
+  try{ const r=await request("unlock",{commit:true,Gateway:$("Gateway").value.trim(),Head:$("Head").value.trim(),Local:local,
+                                       Firmware:$("GateFirmware").value.trim(),Line:$("GateLine").value.trim()});
+    if(r.Blocked){ setPill("bad","Refused by gate"); $("status").textContent=r.Result; state.gateOk=false; controls(); return; }
     state.sshOn=r.Ok===true;
     setPill(state.sshOn?"ok":"bad", state.sshOn?"SSH enabled":"Flash did not complete");
     $("status").textContent=r.Result||(state.sshOn?"SSH is up. Continue to Identify.":"Nothing was written; the existing config is intact.");
@@ -554,6 +607,33 @@ $("addons-load").onclick=async()=>{
   }catch(e){ if(e.message==="__NO_ENDPOINT__")return endpointMissing("Add-ons"); setPill("bad","Error");$("status").textContent=e.message; }
 };
 $("recover").onclick=()=>{ if(confirm("Have you closed every other installer and confirmed no other computer is installing to this car?")) vehicle("recover"); };
+
+// ---- dark-screen recovery (read-only scan, then optional state clear) ----
+async function huRecover(clear){
+  const op = clear?"recover-clear":"recover-scan";
+  setPill("run",clear?"Clearing":"Scanning");
+  $("status").textContent = clear
+    ? "Clearing the latched flash state and resetting the unit, then waiting ~60s for it to boot…"
+    : "Reading the head unit's flash-state registers and fault memory. Nothing is being written…";
+  try{
+    const r=await request(op,{Gateway:$("Gateway").value.trim()});
+    if(r.NotAnswering){ setPill("bad","HU not answering");
+      $("status").textContent=r.Result+"\n\nThe unit is not on the bus — this needs ISTA, not this tool."; return; }
+    if(clear){
+      setPill(r.Cleared?"ok":"warn", r.Cleared?"State cleared":"Reset forced");
+      $("status").textContent=r.Result+(r.Cleared
+        ? "\n\nCHECK THE SCREEN NOW. If it is still dark, the latch was not the cause — reflash via E-Sys."
+        : "\n\nRegisters did not come back clean — this needs an E-Sys reflash.");
+    } else if(r.Latched){ setPill("warn","Latched flash state");
+      $("status").textContent=r.Result+"\n\nThis is the documented black-screen cause. Use “Clear latched state & reset”.";
+    } else if(r.Clean){ setPill("ok","Registers clean");
+      $("status").textContent=r.Result+"\n\nThe latch is NOT the problem here. This tool cannot fix the screen — the unit needs an E-Sys reflash (BTLD + SWFL + CAFD).";
+    } else { setPill("warn","Inconclusive"); $("status").textContent=r.Result; }
+  }catch(e){ if(e.message==="__NO_ENDPOINT__")return endpointMissing("Recovery"); setPill("bad","Error");$("status").textContent=e.message; }
+  finally{controls();}
+}
+$("hu-scan").onclick=()=>huRecover(false);
+$("hu-clear").onclick=()=>{ if(confirm("Clear the latched flash state and reset the head unit?\n\nThis writes no files. It runs the same teardown the flasher uses, then resets the unit.")) huRecover(true); };
 $("revert").onclick=async()=>{
   if(!confirm("Close SSH and restore the factory starter.cfg? The head unit will reboot."))return;
   setPill("run","Restoring");$("status").textContent="Flashing the stock config and rebooting…";

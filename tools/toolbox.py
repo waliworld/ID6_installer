@@ -28,6 +28,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 FLASHER = HERE / "ssh-unlock" / "nbt_optdebug_flash.py"
+RECOVER = HERE / "ssh-unlock" / "nbt_recover.py"
 HU_INFO = HERE / "hu-info" / "hu_info.py"
 PY = sys.executable or "python3"
 
@@ -53,6 +54,10 @@ try:
     import enet
 except ImportError:
     enet = None
+try:
+    import ssh_gate
+except ImportError:
+    ssh_gate = None
 
 from types import SimpleNamespace
 
@@ -163,6 +168,30 @@ def unlock(body: dict) -> dict:
     else:
         return {"Ok": False, "Result": "unlock needs selftest, commit, or revert."}
 
+    # ---- pre-flight gate -------------------------------------------------
+    # Both commit AND revert go through the same flash-mode entry, so both are
+    # gated. Refuse before the flasher is even launched; the flasher re-checks
+    # independently (defence in depth).
+    firmware = (body.get("Firmware") or "").strip() or None
+    line = (body.get("Line") or "").strip() or None
+    if ssh_gate is None:
+        return {"Ok": False, "Blocked": True, "Code": "GATE_UNAVAILABLE",
+                "Result": "Pre-flight gate (tools/ssh_gate.py) is missing. Refusing to flash "
+                          "without a version check."}
+    verdict = ssh_gate.check("nbt_optdebug", firmware=firmware, line=line,
+                             platform=(body.get("Platform") or None))
+    if not verdict["Allowed"] and not body.get("force"):
+        return {"Ok": False, "Blocked": True, "Gate": verdict, "Code": verdict["Code"],
+                "Result": "REFUSED BY PRE-FLIGHT GATE - nothing transmitted, HU untouched.\n\n"
+                          + verdict["Reason"] + "\n\n-> " + verdict["NextStep"]}
+    if firmware:
+        args += ["--firmware", firmware]
+    if line:
+        args += ["--line", line]
+    if body.get("force"):
+        args += ["--force-unsupported"]
+    # ----------------------------------------------------------------------
+
     if gateway:
         args += ["--host", gateway, "--no-discover"]
     # Keep under the Go server's 4-minute write timeout.
@@ -225,6 +254,69 @@ def addon_status(body: dict) -> dict:
     return _addon("do_status", body)
 
 
+# ---------------------------------------------------------------- gate + recovery
+def gate_check(body: dict) -> dict:
+    """Which rooting / install styles are valid for THIS unit?
+
+    body: {Firmware: 'NBTevo_Y24073J', Line: '007_001_049', Platform, Style}
+    With no Style, returns the full matrix - the 'what can I safely run here'
+    answer a tech needs before touching the car.
+    """
+    if ssh_gate is None:
+        return {"Ok": False, "Result": "tools/ssh_gate.py is missing."}
+    fw = (body.get("Firmware") or "").strip() or None
+    line = (body.get("Line") or "").strip() or None
+    plat = (body.get("Platform") or "").strip() or None
+    style = (body.get("Style") or "").strip() or None
+    if style:
+        return {"Ok": True, "Verdict": ssh_gate.check(style, fw, line, plat)}
+    m = ssh_gate.matrix(fw, line, plat)
+    return {
+        "Ok": True,
+        "Firmware": fw,
+        "Line": m["nbt_optdebug"]["Line"],
+        "Matrix": m,
+        "Summary": [
+            {"Style": k, "Label": v["StyleLabel"], "Allowed": v["Allowed"],
+             "WritesFlash": v["WritesFlash"], "Code": v["Code"],
+             "Reason": v["Reason"], "NextStep": v["NextStep"]}
+            for k, v in m.items()
+        ],
+    }
+
+
+def _recover(body: dict, clear: bool) -> dict:
+    if not RECOVER.exists():
+        return {"Ok": False, "Result": "tools/ssh-unlock/nbt_recover.py is missing."}
+    args: list[str] = []
+    gateway = (body.get("Gateway") or "").strip()
+    if gateway:
+        args += ["--host", gateway]
+    if clear:
+        args.append("--clear")
+    rc, out, err = _py(RECOVER, args, timeout=220 if clear else 90)
+    text = (out + "\n" + err).strip()
+    low = text.lower()
+    return {
+        "Ok": rc in (0, 1),
+        "Latched": "latched flash state found" in low,
+        "Clean": "registers read clean" in low,
+        "NotAnswering": "not answering diagnostics" in low,
+        "Cleared": bool(clear and "registers are clean and the hu is in its application" in low),
+        "Result": text[-4000:] or "no output",
+    }
+
+
+def recover_scan(body: dict) -> dict:
+    """READ-ONLY diagnostic of a dark HU after an aborted flash. Writes nothing."""
+    return _recover(body, clear=False)
+
+
+def recover_clear(body: dict) -> dict:
+    """Read, then run the tested teardown to clear a latched flash state + reset."""
+    return _recover(body, clear=True)
+
+
 OPS = {
     "selfcheck": selfcheck,
     "discover": discover,
@@ -244,6 +336,9 @@ OPS = {
     "coding-identify": lambda b: _tk("coding_identify", b),
     "coding-backup": lambda b: _tk("coding_backup", b),
     "coding-set": lambda b: _tk("coding_set", b),
+    "gate-check": gate_check,
+    "recover-scan": recover_scan,
+    "recover-clear": recover_clear,
     "platform-detect": hu_platform.detect,
     "psdzdata-locate": hu_platform.psdzdata_locate,
     "apps-catalog": lambda b: _apps("catalog", b),
